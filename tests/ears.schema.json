@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ears.schema.json",
+  "title": "Ears",
+  "description": "Settings of the ears (the room's ear and every call's ear), host layer: <root>/ears/ears.json. The keeper reads it every loop; each capture reads stt as it starts. Written by hand, by `ears services install`, or by the settings app. A settings screen can be drawn from this schema alone: titles label the controls, a boolean is a switch, an anyOf of titled consts is a picker.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "This schema's name, when the file names it.",
+      "type": "string"
+    },
+    "listen": {
+      "title": "Listening",
+      "description": "The room's ear on or off. Off stops the capture; nothing is heard until it is on again.",
+      "type": "boolean",
+      "default": true
+    },
+    "input": {
+      "title": "Input",
+      "description": "'default' follows the Mac's default input; one input's exact name pins the ears to it.",
+      "type": "string",
+      "default": "default",
+      "examples": ["default", "MacBook Pro Microphone"],
+      "x-widget": "audio-input"
+    },
+    "stt": {
+      "title": "Engine",
+      "description": "What both ears transcribe with: an OpenAI-compatible /v1 URL and the model it should load. A change restarts the room's capture; a call takes it at the next call.",
+      "default": {"url": "http://127.0.0.1:2023/v1"},
+      "anyOf": [
+        {
+          "title": "Parakeet (VoiceMode mlx-audio, :8890)",
+          "const": {"url": "http://127.0.0.1:8890/v1", "model": "mlx-community/parakeet-tdt-0.6b-v3"}
+        },
+        {
+          "title": "Apple (ears serve, :2023)",
+          "const": {"url": "http://127.0.0.1:2023/v1"}
+        },
+        {
+          "title": "Whisper large-v2 (VoiceMode whisper, :2022)",
+          "const": {"url": "http://127.0.0.1:2022/v1"}
+        },
+        {
+          "title": "Other",
+          "type": "object",
+          "properties": {
+            "url": {"title": "URL", "type": "string", "pattern": "^https?://"},
+            "model": {"title": "Model", "type": "string", "minLength": 1}
+          },
+          "required": ["url"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "patternProperties": {
+    "^_": {"description": "A note for people (why a value is what it is, who set it); never read by the ears."}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+# What the settings test suite needs. `make test` reads this file:
+#   uvx --with-requirements requirements-test.txt pytest -q tests
+# Add a dependency here, never inline in the Makefile. A RUNTIME dep goes in
+# requirements.txt as well (tests/test_guards.py checks both lists).
+pytest
+cryptography   # webauth.py: passkey verification (test_webauth, test_web_stepup, test_enrol)
+websockets     # web.py's socket (test_web_session, test_web_stepup, test_web_origins, test_enrol)
+tomlkit        # schemas.py: the TOML write path (test_toml); a RUNTIME dep too (requirements.txt)
+sessiontools   # schemas.py: the kit's registry, the settled[kit] extra at runtime (test_paths, the gate)
+jsonschema     # schemas.py with the kit: the full validator (sessiontools brings it; the settled[kit] extra names it)

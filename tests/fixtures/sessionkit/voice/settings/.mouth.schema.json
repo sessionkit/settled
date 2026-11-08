@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mouth.schema.json",
+  "title": "Mouth",
+  "description": "The mouth's settings: ~/.sessionkit/voice/settings/mouth.json (the mouth reads it as <mouth dir>/settings.json, a link to it, or $MOUTH_SETTINGS). Read for every line, so a change applies to the next line queued; no restart. `ears services install` writes this copy beside it as .mouth.schema.json.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "This schema's name, when the file names it.",
+      "type": "string"
+    },
+    "output": {
+      "title": "Output",
+      "description": "The device a line plays on when it names none (no --device, no mailed device, no $MOUTH_DEVICE). 'default' plays on macOS's default output, 'null' plays nothing; otherwise one output's exact name. Unset, such a line plays on the system default output.",
+      "type": "string",
+      "default": "default"
+    },
+    "voice": {
+      "title": "Voice",
+      "description": "The voice for a line that names none.",
+      "type": "string"
+    },
+    "tts": {
+      "title": "Speech server",
+      "description": "The OpenAI-compatible /v1 server the mouth's kokoro backend (and auto) speaks through, and the model it asks for. Unset: the mlx-audio server on 127.0.0.1:8890 with Kokoro-82M; a url without a model still asks for Kokoro-82M. $MOUTH_KOKORO_URL and $MOUTH_KOKORO_MODEL win over it, each on its own. A key is never read from here: it is $MOUTH_TTS_KEY, else the file ~/.sessionkit/voice/settings/tts.key (yours, mode 600).",
+      "type": "object",
+      "properties": {
+        "url": {"title": "URL", "type": "string", "pattern": "^https?://"},
+        "model": {"title": "Model", "type": "string", "minLength": 1}
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    },
+    "volume": {
+      "title": "Volume",
+      "description": "A spoken line's level, 0-100 of full (linear: 50 is about -6 dB). 100 is full level. A line's own `mouth say --volume N` wins over this.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 100
+    },
+    "play_volume": {
+      "title": "Played file volume",
+      "description": "A played file's level (`mouth play`), 0-100 of full. Unset, it follows Volume. A file's own `mouth play --volume N` wins over this.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "normalize": {
+      "title": "Normalize voices",
+      "description": "On: every voice is levelled to the same loudness (Normalize target), by a gain kept with the voice and measured once from what it has said, with a light limiter; a line's own `mouth say --no-normalize` wins. Off: each voice plays at its own loudness, which can sit well under music. Played files are never levelled.",
+      "type": "boolean",
+      "default": true
+    },
+    "normalize_lufs": {
+      "title": "Normalize target (LUFS)",
+      "description": "The loudness every voice is levelled to, in LUFS (EBU R128 integrated). -16 is a usual speech level; nearer 0 is louder. A voice's own gain is its measured loudness subtracted from this, so a change applies to the next line with no re-measure.",
+      "type": "number",
+      "minimum": -40,
+      "maximum": -5,
+      "default": -16
+    },
+    "music_duck": {
+      "title": "Duck played files under speech",
+      "description": "On: a file the mouth plays turns down while a line is spoken, or while you talk over it on a call or headphones, and comes back after. Off: it plays on at its own level; nothing cuts it but a stop, and lines mix over it. It gates the DJ (mpv) dip too. A timed `mouth duck` override beats this; a per-call --duck/--no-duck beats both. Precedence: per-call --duck/--no-duck > the mouth duck override > the music_duck cascade (session > seat > agent > settings) > built-in on.",
+      "type": "boolean",
+      "default": true
+    },
+    "music_duck_level": {
+      "title": "Duck level",
+      "description": "A ducked file's level, 0-100 of its own volume (20 is about -14 dB).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 20
+    },
+    "music_duck_restore_s": {
+      "title": "Duck restore (seconds)",
+      "description": "How long it must be quiet before a ducked file comes back up.",
+      "type": "number",
+      "minimum": 0,
+      "default": 1.0
+    },
+    "music_instrumental": {
+      "title": "Play songs without their vocals",
+      "description": "On: a file the mouth plays plays its instrumental (the song without its vocals) when one is made for it. Off: it plays as it is. A per-call --instrumental/--no-instrumental beats this, and so does $MOUTH_MUSIC_INSTRUMENTAL in the environment of the command that plays it. Precedence: per-call --instrumental/--no-instrumental > $MOUTH_MUSIC_INSTRUMENTAL > the music_instrumental cascade (session > seat > agent > settings) > built-in on.",
+      "type": "boolean",
+      "default": true
+    },
+    "barge_in": {
+      "title": "Who may barge in",
+      "description": "Whose words cut a line while it plays. Anyone: any words that are not the line's own (the television too). Names: only words the speaker side-car names as one of them; other voices, the television, silence and mixed voices never cut. A line still unnamed 2 s after its words cuts as if this were Anyone, so a stopped side-car never takes barge-in away; so do words the side-car hears but cannot score (unheard: too little audio, a quiet voice), at once. Today the side-car names the room mic only, so on a call a list acts as Anyone. When `session operator` names an operator, the default is that operator's mailbox in the room (calls stay anyone), read as a speaker name: enroll under your mailbox name. Set this key, to anyone or to names, and it wins.",
+      "default": "anyone",
+      "anyOf": [
+        {"$ref": "#/$defs/who"},
+        {
+          "title": "Room and calls apart",
+          "type": "object",
+          "properties": {
+            "room": {"title": "Room", "description": "Every output that is not a call.", "$ref": "#/$defs/who"},
+            "call": {"title": "Calls", "description": "A line into a call (call:N).", "$ref": "#/$defs/who"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "barge_words": {
+      "title": "Words that cut a line",
+      "description": "How many of your own words (not filler like \"yeah\" or \"okay\", and not the line's own words) cut a line you talk over, on a call or off it: one policy everywhere. Higher lets you say more before the line stops. A stop word (\"stop\", \"wait\", \"interrupting\"...) cuts at once. This beats $MOUTH_BARGE_WORDS, which is the default's, and the model beats this: mouth barge N|off for a while, and a line's own mouth say --barge-words N|off or --no-barge above that; mouth status and mouth barge name the layer that set it. Precedence: per-line --barge-words/--no-barge > the mouth barge override > the user's barge_* settings > $MOUTH_BARGE_WORDS (N only) > built-in.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 2
+    },
+    "barge_duck_level": {
+      "title": "Barge duck level",
+      "description": "The moment you start talking over a line on headphones or a call, the line drops to this level, 0-100 of its own (25 is about -12 dB), before a word of yours is recognised; your words then cut it. If they never come (road noise, the television), it comes back up. 100 turns the duck off. mouth barge --duck L|off beats this for a while. A cut on words alone comes 1.3-2 s after your first word; the duck answers at once.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 25
+    },
+    "barge_duck_recover_s": {
+      "title": "Barge duck recover (seconds)",
+      "description": "How long a ducked line waits, after you stop talking, for your words to cut it before it comes back up. It counts from the ears' end-of-voice mark, about 0.2 s after your last sound; while your voice is on, the line stays down. With nothing set it goes by the ears' partials setting: 1.0 with streaming partials (nemotron), whose last word lands about 0.1 s after you stop, and 2.5 with chunked partials (final, the ears' default), which come later. A setting here applies to both.",
+      "type": "number",
+      "minimum": 0,
+      "default": 2.5
+    },
+    "barge_duck_max_s": {
+      "title": "Barge duck longest (seconds)",
+      "description": "The longest a line stays ducked while your voice stays on with no pause the ears can see (one of 0.2 s): the ears died, or noise that never lets up, such as road noise or a television. Then the line comes back up all the same, and its duck record says capped, with the words counted toward a cut by then (none: noise or filler). Each new start of your voice counts it again; a line that begins while you are already talking counts it from its first sound. 4 s still covers a real barge-in: your words reach the cut within about 2.4 s at p90 on streaming partials. mouth barge --duck-max S beats this for a while.",
+      "type": "number",
+      "minimum": 0,
+      "default": 4
+    },
+    "resume_answer_words": {
+      "title": "Words that answer a cut question",
+      "description": "When your words cut a line, its unsaid rest is replayed after you finish. If the sentence it was cut in asked you something and you said this many of your own words (not filler like \"yeah\" or \"okay\", not a stop word like \"wait\" or \"hang on\", and not the line's own words coming back), your words were the answer, so it is not replayed. A shorter reply, such as a single \"yes\", still gets the replay. This beats $MOUTH_RESUME_ANSWER_WORDS.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 2
+    },
+    "resume_answer_question": {
+      "title": "Only a cut question counts as answered",
+      "description": "On (the default), only a cut line whose sentence asked you something is dropped when you answer it; a cut statement is always replayed. Off drops the replay of any cut line you answered with resume_answer_words of your own words. This beats $MOUTH_RESUME_ANSWER_QUESTION (off, 0, no or false turn it off).",
+      "type": "boolean",
+      "default": true
+    },
+    "room_hold": {
+      "title": "Room lines wait for the end of your turn",
+      "description": "On (the default), a line on a room device (any output that is not a call) that asks no hold waits for the end of your turn, as mouth say --hold turn-end does. A line sent with --now or --hold none (X-Mouth-When: now), a played file and a call line are not changed. Off plays such a line at once. $MOUTH_ROOM_HOLD beats this (off, 0, no or false turn it off).",
+      "type": "boolean",
+      "default": true
+    },
+    "lead_s": {
+      "title": "Lead buffer (seconds)",
+      "description": "Seconds of a line's audio the mouth buffers before it starts to play it, so a voice that renders slower than real time cannot chop. 0 plays a line as it streams. A clone voice renders at only 0.93-0.96x real time even on an idle Mac, so 2.5 stops it chopping, for about 2.3 s more wait before a clone line starts. Kokoro and Apple voices render well ahead and fill any lead almost at once. A line's own mouth say --lead wins.",
+      "type": "number",
+      "minimum": 0,
+      "default": 0
+    },
+    "barge_ignore_words": {
+      "title": "Barge ignored words",
+      "description": "The words barge-in never counts as yours: filler, backchannels and words common to every line. A line is cut by barge_words of your words that are in neither this list nor the line itself. Each entry is split into words as your speech is (\"uh-huh\" is \"uh\" and \"huh\"). An empty list counts every word. Deleting the key restores this built-in list. It does not change the echo test. mouth barge --ignore W,.. adds words to this list for a while, and never removes one: a backchannel never counts. A change applies to the next line, so you can try another list live.",
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true,
+      "default": [
+        "a", "about", "above", "after", "again", "ah", "all", "am", "an", "and", "any", "are",
+        "as", "at", "awesome", "be", "been", "being", "below", "both", "brilliant", "but", "by", "can",
+        "cool", "could", "d", "did", "do", "does", "doing", "down", "during", "each", "exactly", "fantastic",
+        "few", "for", "from", "further", "good", "got", "great", "had", "has", "have", "having", "he",
+        "her", "here", "hers", "him", "his", "hmm", "how", "huh", "i", "if", "in", "indeed",
+        "into", "is", "it", "its", "itself", "just", "let", "like", "ll", "lovely", "m", "me",
+        "mhm", "mm", "mmm", "more", "most", "my", "myself", "nice", "no", "nor", "not", "now",
+        "of", "off", "oh", "ok", "okay", "on", "once", "only", "or", "other", "our", "out",
+        "over", "own", "re", "really", "right", "s", "same", "see", "she", "should", "so", "some",
+        "such", "sure", "t", "than", "thank", "thanks", "that", "the", "their", "them", "then", "there",
+        "these", "they", "this", "those", "through", "to", "too", "totally", "uh", "um", "under", "until",
+        "up", "ve", "very", "was", "we", "well", "were", "what", "when", "where", "which", "while",
+        "who", "whom", "why", "will", "with", "would", "wow", "yeah", "yep", "yes", "you", "your",
+        "yours", "yourself", "yup"
+      ]
+    }
+  },
+  "$defs": {
+    "who": {
+      "anyOf": [
+        {"title": "Anyone", "const": "anyone"},
+        {
+          "title": "Only these voices",
+          "description": "Names as the speaker side-car writes them (its refs, e.g. alice, bob). An empty list: nobody cuts.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        }
+      ]
+    }
+  }
+}

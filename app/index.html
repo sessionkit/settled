@@ -1,0 +1,1099 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Settings</title>
+<!-- On the home screen it runs as an app, with the switch at the bottom. The manifest
+     is fetched with the front door's cookie, like Talk's. -->
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Settings">
+<link rel="apple-touch-icon" href="icon.png">
+<script src="webxdc.js"></script>
+<link rel="stylesheet" href="desk.css">
+<style>
+  /* tokens: desk.css */
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.35 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif }
+  main { max-width:560px; margin:0 auto; padding:10px 14px 40px }
+  .nav { display:flex; align-items:center; min-height:34px }
+  .nav:empty { display:none }   /* the home has no back button: no 34 px band above the first cap */
+  .back { border:0; background:none; color:var(--tint); font:inherit; padding:4px 0; cursor:pointer }
+  .back::before { content:"\2039"; font-size:1.6rem; line-height:1; margin-right:4px; vertical-align:-2px }
+  h1 { font-size:1.5rem; margin:.2em 4px .1em }
+  .sub { color:var(--muted); font-size:.82rem; margin:0 4px 14px }
+  h1:empty, #sub:empty { display:none }
+  .group { color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em;
+           margin:18px 16px 6px }
+  .card { background:var(--card); border-radius:12px; overflow:hidden }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+         padding:11px 16px; min-height:48px; width:100%; border:0; background:none;
+         color:inherit; font:inherit; text-align:left }
+  .row + .row { border-top:1px solid var(--line) }
+  .row .hint { display:block; color:var(--muted); font-size:.78rem }
+  .row.dim { opacity:.4; pointer-events:none }
+  .row.big > span:first-child { font-size:17px; font-weight:600 }
+  .prose { padding:6px 16px 10px; font-size:15px; line-height:1.4 }
+  .prose h3 { font-size:15px; font-weight:600; margin:14px 0 4px } .prose h4 { font-size:14px; margin:12px 0 4px }
+  .prose p { margin:6px 0 } .prose p:first-child { margin-top:4px }
+  .prose code { font:inherit; color:var(--muted) } .prose b { font-weight:600 }
+  button.row { cursor:pointer }
+  .val { color:var(--muted); font-size:.9rem; text-align:right; flex:none; max-width:55% }
+  .chev::after { content:"\203A"; color:var(--muted); font-size:1.4rem; margin-left:8px; vertical-align:-2px }
+  .tick { color:var(--tint); font-weight:600; flex:none }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;
+         background:var(--muted) } .dot.up { background:var(--on) }
+  .sw { position:relative; width:51px; height:31px; flex:none; border:0; padding:0;
+        border-radius:16px; background:var(--off); transition:background .15s; cursor:pointer }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px;
+               border-radius:50%; background:var(--knob); box-shadow:0 1px 3px rgba(0,0,0,.25);
+               transition:left .15s }
+  .sw.on { background:var(--on) } .sw.on::after { left:22px }
+  .foot { color:var(--muted); font-size:.75rem; margin:14px 16px }
+  /* the voice browser: 44 px icon buttons inside a row, families that fold */
+  .grow { flex:1; min-width:0 }
+  .vrow { gap:0; padding-top:2px; padding-bottom:2px; padding-right:4px; cursor:pointer }
+  .ic { width:44px; height:44px; flex:none; border:0; padding:0; background:none; border-radius:22px;
+        color:var(--tint); font:1.2rem/44px -apple-system, sans-serif; text-align:center; cursor:pointer }
+  .ic:active { background:var(--line) }
+  .ic.heart, .ic.star { color:var(--muted) } .ic.heart.on { color:#ff2d55 } .ic.star.on { color:#ffcc00 }
+  .ic.off { opacity:.3; pointer-events:none }
+  .gold { color:#ffcc00; font-size:.85em }
+  .fold { min-height:40px; padding-top:6px; padding-bottom:6px }
+  .fold .chev::after { display:inline-block; transition:transform .15s }
+  .fold.open .chev::after { transform:rotate(90deg) }
+  .row input { flex:1; min-width:0; font:inherit; color:inherit; background:var(--bg);
+               border:1px solid var(--line); border-radius:8px; padding:8px 10px }
+  /* swipe a voice row left: Hide (Unhide on a hidden one) sits behind it, as in iOS lists */
+  .swipe { position:relative; overflow:hidden }
+  .swipe + .swipe, .row + .swipe, .swipe + .row { border-top:1px solid var(--line) }
+  .swipe > .vrow { position:relative; background:var(--card); transition:transform .2s; touch-action:pan-y }
+  .swipe.open > .vrow { transform:translateX(-88px) }
+  .swipe.drag > .vrow { transition:none }
+  .swipe-act { position:absolute; top:0; right:0; bottom:0; width:88px; border:0; padding:0;
+               background:#ff3b30; color:#fff; font:inherit; font-size:.95rem; font-weight:600; cursor:pointer }
+  .swipe-act.un { background:var(--tint) }
+  .vrow.hid .grow { opacity:.5 }
+  .pill { flex:none; height:44px; border:0; padding:0 10px; background:none; color:var(--tint);
+          font:inherit; font-size:.95rem; cursor:pointer }
+  .pill[disabled] { color:var(--muted) }
+  /* a row you tap to pick, with icon buttons beside it (a button can't hold buttons) */
+  .pick { flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:8px;
+          min-height:44px; border:0; padding:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer }
+  .saved { color:var(--on); font-weight:600; flex:none; font-size:.9rem }
+  /* the bar at the bottom: where the mouth is going, and ♥ = hearts only */
+  body.xdc main { padding-bottom:96px }
+  .bar.bottom { display:block; position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--card);
+         font-size:inherit; padding:6px 10px calc(6px + env(safe-area-inset-bottom)) }
+  .bar.bottom:has(#bar:empty) { display:none }   /* nothing to show until the state comes */
+  .bar-in { max-width:560px; margin:0 auto; display:flex; align-items:center; gap:4px }
+  .bar-in .pick { padding:0 6px }
+  .bar-in .hint { display:block; color:var(--muted); font-size:.75rem }
+  .barsw { flex:none; display:flex; align-items:center; gap:6px; padding-left:6px }
+  .barsw .hint { display:inline; white-space:nowrap }
+  .bar-in .pick > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  /* the bar's picker opens above the bar, inside it: in the shell that keeps it in the Settings column */
+  .sheet { position:absolute; left:0; right:0; bottom:100%; z-index:6; padding:0 10px 8px }
+  .sheet .card { max-width:560px; margin:0 auto; box-shadow:0 4px 24px rgba(0,0,0,.25) }
+  .foot.warn { color:#ff3b30 }
+  .row .lab { flex:none; min-width:64px }
+
+  /* THE SHELL: the ear strip on top, never hidden; two rooms. Phone: two
+     tabs. Wide (900px): two columns, Settings a column Talk can hide (data-settings="hidden").
+     The page is one viewport high and each room scrolls itself, so the mouth's bar sits at the
+     bottom of the Settings room, never under short content. A media query,
+     not a container one: container-type on the body made it the containing block of every
+     fixed thing, so the lock and the bar placed themselves on the body, not the screen. */
+  body:not(.xdc) { height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  .bar.top, .tabs { flex:none; }
+  /* The two rooms are one switch, not two headings: an iOS segmented control,
+     a grey thumb on a grey track. On the home screen (standalone) it is the app's tab bar, at
+     the bottom, in thumb reach; in Safari the bottom is Safari's, so it stays at the top. */
+  .tabs { padding:6px 16px 8px; border-bottom:1px solid var(--line); }
+  .seg { display:flex; padding:2px; border-radius:9px; background:var(--track); }
+  .tab { flex:1; text-align:center; padding:5px 6px; border:0; border-radius:7px; background:none; font:inherit; font-size:13px; color:var(--fg); }
+  .tab.on { background:var(--thumb); font-weight:600; box-shadow:0 3px 8px rgba(0,0,0,.12), 0 0 1px rgba(0,0,0,.04); }
+  .tab svg { display:none; }
+  @media (display-mode: standalone) {
+    .rooms { order:2; }
+    .tabs { order:3; padding:6px 0 env(safe-area-inset-bottom); border-bottom:0; border-top:1px solid var(--line); background:var(--glass);
+            -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+    .seg { padding:0; border-radius:0; background:none; }
+    .tab { display:flex; flex-direction:column; align-items:center; gap:2px; padding:2px 0 4px; font-size:10.5px; color:var(--muted); }
+    .tab.on { background:none; box-shadow:none; font-weight:500; color:var(--tint); }
+    .tab svg { display:block; width:26px; height:26px; }
+  }
+  .rooms { flex:1; min-height:0; display:grid; grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); }
+  .room { min-height:0; overflow:auto; }
+  .room.talk { padding:0; overflow:hidden; }
+  .room.talk iframe { display:block; width:100%; height:100%; border:0; }
+  .room.settings { position:relative; display:flex; flex-direction:column; }
+  .room.settings main { flex:1 0 auto; width:100%; }
+  body:not(.xdc) .bar.bottom { position:sticky; }
+  body:not(.xdc) main { padding-bottom:16px; }
+  .room.hidden { display:none; }
+  /* one title per view: on a phone the tab names the room, so Settings' home
+     shows no h1 (the host is in the line under it); a screen below home keeps its name, small */
+  body:not(.xdc) h1 { font-size:17px; font-weight:600; margin:.5em 4px .1em; }
+  /* the shell's own control: show/hide the Settings column, at the right end of the strip (wide) */
+  .bar.ear .side { display:none; }
+  body[data-screen="home"]:not(.xdc) h1 { display:none; }   /* the tab or the column names the room */
+  @media (min-width: 900px) {
+    .tabs { display:none; }
+    .rooms { grid-template-columns:1fr 400px; }
+    .room.talk.hidden { display:block; }
+    .room.settings.hidden { display:flex; }
+    .room.settings { border-left:1px solid var(--line); }
+    .bar.ear .side { display:inline-block; }
+    body[data-settings="hidden"] .rooms { grid-template-columns:1fr; }
+    body[data-settings="hidden"] .room.settings { display:none; }
+  }
+  body.xdc .tabs, body.xdc .room.talk, body.xdc .bar.ear .side { display:none; }   /* inside Delta Chat: the desk alone, as before */
+</style>
+</head>
+<body>
+<div class="bar top ear off" id="ear"><div class="dot"></div><div class="state"><b>Connecting…</b><span></span></div><button class="side" id="side" data-side="1" aria-pressed="true">Settings ›</button></div>
+<div class="tabs" id="tabs"><div class="seg"><button class="tab" data-room="talk"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6.1-.2 1.4-.8 2.7-1.8 3.6 2 0 3.8-.7 5.1-1.8 1 .3 2.1.4 3.3.4 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>Talk</button><button class="tab on" data-room="settings"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L14.9 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.4 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM12.9 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>Settings</button></div></div>
+<div class="rooms" id="rooms">
+<div class="room talk hidden" id="room-talk"><iframe id="talk" title="Talk" loading="lazy"></iframe></div>
+<div class="room settings" id="room-settings">
+<main>
+  <div class="nav" id="nav"></div>
+  <h1 id="title"></h1>
+  <div id="app"></div>
+  <div class="foot" id="sub"></div>
+</main>
+<div class="bar bottom"><div id="sheet"></div><div class="bar-in" id="bar"></div></div>
+</div>
+</div>
+<script>
+(function () {
+  // State = every update folded in order: "state" (from the Mac) replaces all,
+  // "set" (a tap, from any device) changes one path. So every phone agrees,
+  // and the Mac's reply is the truth. Screens are a stack; only this phone sees it.
+  var S = null, at = null, pending = 0, stack = ["home"];
+  var SOUND = {
+    "turn": ["Turn ends", "a tick when you finish speaking"],
+    "partial": ["While you talk", "a soft blip about every 2 s"],
+    "event:device-change": ["Mic changed", ""],
+    "event:turn-discarded": ["Heard, no words", "a turn the transcriber found empty"],
+    "event:listen-stopped": ["Ears stopped", ""]
+  };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function get(o, path) { for (var i = 0; i < path.length; i++) { if (o == null) return undefined; o = o[path[i]]; } return o; }
+  function put(o, path, v) { for (var i = 0; i < path.length - 1; i++) { o[path[i]] = o[path[i]] || {}; o = o[path[i]]; } o[path[path.length - 1]] = v; }
+  function send(path, value) {
+    pending++;
+    window.webxdc.sendUpdate({ payload: { from: "xdc", app: "notify", kind: "set", path: path, value: value,
+      by: window.webxdc.selfName || "", at: new Date().toISOString() } }, "");
+    render();
+  }
+  function attr(v) { return esc(JSON.stringify(v)); }
+  function sw(path, on, value) {   // value: what a tap sends; !on unless the switch reads the setting inverted
+    return '<button class="sw' + (on ? " on" : "") + '" data-path="' + attr(path) +
+      '" data-value="' + attr(value === undefined ? !on : value) + '" aria-pressed="' + !!on + '"></button>';
+  }
+  // The engine (ears.final): its name is the schema branch's title before " (", else the
+  // host; "on this Mac" only when the URL's host is a loopback (127.0.0.1,
+  // localhost or ::1), anything else is "at HOST".
+  function engine() {
+    var t = (S && S.tools || {}).ears || {}, fs = ((t.schema || {}).properties || {})["final"] || {};
+    var v = (t.value || {})["final"]; if (v === undefined) v = fs["default"];
+    v = v && typeof v === "object" ? v : {};
+    var m = /^[a-z]+:\/\/(\[[^\]]*\]|[^\/:?#]+)/i.exec(String(v.url || "")), host = m ? m[1] : "";
+    var local = /^(127\.0\.0\.1|localhost|\[::1\]|::1)$/i.test(host), name = "";
+    (fs.anyOf || fs.oneOf || []).forEach(function (b) {
+      var k = b["const"];
+      if (k && k.url === v.url && (k.model || "") === (v.model || "")) name = String(b.title || "").replace(/\s*\(.*$/, "");
+    });
+    return { name: name || host || "No engine", host: host, local: local, v: v };
+  }
+  // Talk's one setting: its row is drawn from Talk's own schema (.talk.schema.json,
+  // which `ears services install` writes beside talk.json); off by default, so Talk shows no Debug.
+  // Its key: "ears/talk" from the drawn list (no kit: <root>/ears is the voice folder), "talk"
+  // when the kit's walk found it.
+  function talkKey(T) { return T && T["ears/talk"] ? "ears/talk" : "talk"; }
+  function talkDebug(t, key) {
+    var p = ((t.schema || {}).properties || {}).show_debug || {}, on = (t.value || {}).show_debug === true;
+    return row(p.title || "Show Debug in Talk", p["x-hint"] || "", sw(["tool", key, "show_debug"], on));
+  }
+  function nameOf(n) { return n.charAt(0).toUpperCase() + n.slice(1); }
+  var DOC = { text: undefined, missing: "", asked: false };
+  function fetchDoc() {   // once per page load; a 404 carries the path the file would be at
+    DOC.asked = true;
+    if (typeof fetch !== "function") { DOC.missing = "(no fetch here)"; return; }
+    fetch("docs/what-listens.md", { cache: "no-store" }).then(function (r) {
+      return r.ok ? r.text().then(function (t) { DOC.text = t; }) : r.json().then(function (j) { DOC.missing = j.missing || "?"; }, function () { DOC.missing = "?"; });
+    }, function () { DOC.missing = "?"; }).then(render, render);
+  }
+  // A small markdown: #/## headings, paragraphs, `code`, **bold**; `<token>` becomes the live value.
+  // The text is escaped first, so the file can hold nothing the page runs.
+  function md(text, live) {
+    var h = esc(text).replace(/`&lt;(\w+)&gt;`/g, function (m, k) { return k in live ? "<b>" + esc(live[k]) + "</b>" : m; })
+      .replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+    var out = "", para = [], first = true;
+    function flush() { if (para.length) { out += "<p>" + para.join(" ") + "</p>"; para = []; } }
+    h.split("\n").forEach(function (line) {
+      var m = /^(#{1,3})\s+(.*)$/.exec(line);
+      if (m) { flush(); if (m[1].length === 1 && first) { first = false; return; }   // the h1 is the screen's title
+        out += "<h" + (m[1].length + 1) + ">" + m[2] + "</h" + (m[1].length + 1) + ">"; return; }
+      if (!line.trim()) { flush(); return; }
+      para.push(line.trim()); first = false;
+    });
+    flush(); return out;
+  }
+  function text(label, hint) {
+    return '<span>' + esc(label) + (hint ? '<span class="hint">' + esc(hint) + '</span>' : "") + '</span>';
+  }
+  function row(label, hint, control, dim) {
+    return '<div class="row' + (dim ? " dim" : "") + '">' + text(label, hint) + control + '</div>';
+  }
+  function link(label, hint, value, to, dim) {   // a row that dives into screen `to`
+    return '<button class="row' + (dim ? " dim" : "") + '" data-go="' + esc(to) + '">' + text(label, hint) +
+      '<span class="val chev">' + esc(value) + '</span></button>';
+  }
+  function choice(label, hint, path, value, chosen) {  // a picker row; tap = set path to value
+    return '<button class="row" data-path="' + attr(path) + '" data-value="' + attr(value) + '">' +
+      text(label, hint) + '<span class="tick">' + (chosen ? "✓" : "") + '</span></button>';
+  }
+  function card(rows) { return '<div class="card">' + rows + '</div>'; }
+  function group(name) { return '<div class="group">' + esc(name) + '</div>'; }
+  // The voice browser (grown from the voice
+  // picker). Families fold (this phone only, closed at first);
+  // a row's 🔈 says the phrase in that voice, on the Mac; ♥ = you like it, anything
+  // can have one; ★ = the favourite, one per family. Tap a row to dive in.
+  // Swipe a row left to hide the voice. Hidden = out of the list until "Show hidden" is on.
+  // ONE hearts-only, for every list, one general pattern, on the bottom bar: voices,
+  // references and outputs.
+  var open = {}, heartsOnly = false, showHidden = false, draft = "";
+  var savingAct = "", savedAct = "", savedUntil = 0;   // the Saved tick
+  var editing = null, edDraft = "";                   // the pencil: {level, old} being edited
+  var outOpen = false, barOpen = false;               // Output folded; the bar's picker
+  var inOpen = false;                                 // Input folded the same way
+  var swOpen = null, swHid = false;   // the one row swiped open, and whether it was hidden then
+  var KOKORO_WHO = { af: "American woman", am: "American man", bf: "British woman", bm: "British man" };
+  function M() { return S.mouth || {}; }
+  // The host the state came from: the server names it, the page never guesses.
+  function H() { return (S && S.host) || "the host"; }
+  function hostTitle() { return (S && S.host) || "Settings"; }
+  function P() { return M().prefs || {}; }
+  function hearted(v) { return (P().hearts || []).indexOf(v) >= 0; }
+  function refHearted(v, n) { return ((P().refhearts || {})[v] || []).indexOf(n) >= 0; }
+  function isHidden(v) { return (P().hidden || []).indexOf(v) >= 0; }
+  function familyOf(v) {
+    var s = v.lastIndexOf("/"); if (s >= 0) return v.slice(0, s);
+    var k = v.slice(0, 2); return v[2] === "_" && KOKORO_WHO[k] ? k : "";
+  }
+  function famName(f) { return KOKORO_WHO[f] || f.replace(/-/g, " "); }
+  function vlabel(v) { var s = v.lastIndexOf("/"); return s < 0 ? v : v.slice(s + 1); }
+  function vhint(v) {
+    var f = familyOf(v);
+    return KOKORO_WHO[f] ? KOKORO_WHO[f] + ", Kokoro" : f ? famName(f) : "on its own";
+  }
+  function act(cls, label, path, value, on, glyph) {   // a 44 px icon button: one tap to the Mac
+    return '<button class="ic ' + cls + (on ? " on" : "") + '" aria-label="' + esc(label) + '" data-path="' +
+      attr(path) + '" data-value="' + attr(value) + '">' + glyph + '</button>';
+  }
+  function speak(v) { return act("say", "Say the phrase as " + vlabel(v), ["voices", "say"], { voice: v }, false, "🔈"); }
+  // Lines at three levels, and the audition.
+  // Her page says her line: the one she was last saying there (sticky), else her
+  // locked default, else the phrase. The list's 🔈 says the locked one, else the
+  // phrase. The Mac resolves the same way (apply.py line_for).
+  function lineFor(v, page) {
+    var p = P(); return (page && (p.current || {})[v]) || (p.locked || {})[v] || p.phrase || "";
+  }
+  function lockedOf(v) { return (P().locked || {})[v] || ""; }
+  function speakPage(v) { return act("say", "Say her line as " + vlabel(v), ["voices", "say"], { voice: v, page: true }, false, "🔈"); }
+  function lockBtn(v) {
+    var on = lockedOf(v) !== "" && lockedOf(v) === lineFor(v, true);
+    return act("lock", on ? "Unlock: this stops being her default" : "Lock: make this her default line",
+      ["voices", "lock"], { voice: v, on: !on }, on, on ? "🔒" : "🔓");
+  }
+  // 📝 = edit, the pencil and paper: our standard design for editing things. On her page it
+  // opens her line picker, which was the "Change the line" row; in the picker it edits a
+  // line where it is kept.
+  var EDIT = "📝";
+  function editLine(v) {
+    return '<button class="ic" aria-label="Change or edit the line" data-go="' + esc("line:" + v) + '">' + EDIT + '</button>';
+  }
+  function cloneBtn(v, n, smp) {   // 🔈 her line cloned from this one clip: 🔊 made, ⏳ making, 🔇 can't
+    var has = function (k) { return (smp[k] || []).indexOf(n) >= 0; };
+    if (has("notext")) return '<button class="ic off" aria-label="No transcript: ' + esc(n) + ' can\'t be cloned from" disabled>🔇</button>';
+    var made = has("made"), making = has("making");
+    return act("clone", making ? "Making the clone of " + n : made ? "Play the clone from " + n : "Make and play the clone from " + n,
+      ["voices", "audition"], { voice: v, ref: n }, made, making ? "⏳" : made ? "🔊" : "🔈");
+  }
+  function heart(v) {
+    var on = hearted(v);
+    return act("heart", on ? "Unheart" : "Heart", ["voices", "heart"], { voice: v, on: !on }, on, on ? "♥" : "♡");
+  }
+  function lsw(key, on) {   // a switch that only changes this phone's view
+    return '<button class="sw' + (on ? " on" : "") + '" data-local="' + esc(key) + '" aria-pressed="' + !!on + '"></button>';
+  }
+  function irow(label, hint, buttons) {   // label grows; icon buttons sit at the right
+    return '<div class="row"><span class="grow">' + text(label, hint) + '</span>' + buttons + '</div>';
+  }
+  function hidePath(v) { return { path: ["voices", "hide"], value: { voice: v, on: !isHidden(v) } }; }
+  function pill(v) {   // Hide / Unhide as a plain button, for the voice screen and a shown hidden row
+    var h = hidePath(v);
+    return '<button class="pill" data-path="' + attr(h.path) + '" data-value="' + attr(h.value) + '">' +
+      (isHidden(v) ? "Unhide" : "Hide") + '</button>';
+  }
+  function vrow(v, cur) {   // row body dives in; its buttons don't. Swipe it left: Hide behind it
+    var starred = (P().stars || {})[familyOf(v)] === v, hid = isHidden(v), h = hidePath(v);
+    return '<div class="swipe' + (swOpen === v ? " open" : "") + '">' +
+      '<button class="swipe-act' + (hid ? " un" : "") + '" tabindex="-1" data-path="' + attr(h.path) +
+      '" data-value="' + attr(h.value) + '">' + (hid ? "Unhide" : "Hide") + '</button>' +
+      '<div class="row vrow' + (hid ? " hid" : "") + '" role="button" data-go="' + esc("voice:" + v) +
+      '" data-swipe="' + esc(v) + '"><span class="grow">' +
+      esc(vlabel(v)) + (starred ? ' <span class="gold">★</span>' : "") + '<span class="hint">' +
+      esc(hid ? "hidden · " + vhint(v) : vhint(v)) + '</span></span>' +
+      (v === cur ? '<span class="tick">✓</span>' : "") + speak(v) + (hid ? pill(v) : heart(v)) + '</div></div>';
+  }
+  function shown(v) { return (showHidden || !isHidden(v)) && (!heartsOnly || hearted(v)); }
+  function fold(key, name, members, cur) {   // a family: one small row; tap opens it in place
+    var vs = members.filter(shown);
+    if (!vs.length) return "";
+    var isOpen = heartsOnly || open[key] || (showHidden && vs.some(isHidden));
+    var h = '<button class="row fold' + (isOpen ? " open" : "") + '" data-fold="' + esc(key) + '">' + text(name, "") +
+      '<span class="val chev">' + (members.indexOf(cur) >= 0 ? "✓ " : "") + vs.length + '</span></button>';
+    if (isOpen) vs.forEach(function (v) { h += vrow(v, cur); });
+    return h;
+  }
+  function devName(v, now) { return v === "default" ? "Follow the Mac" + (now ? " (" + now + ")" : "") : v; }
+  function saveHint(a, hint) {   // a save row's hint: saving…, then ✓ Saved for 2.5 s once the Mac answers
+    return savingAct === a ? "saving…" : hint;
+  }
+  function savedMark(a) { return savedAct === a && Date.now() < savedUntil ? '<span class="saved">✓ Saved</span>' : ""; }
+  function outHearted(n) { return (P().out_hearts || []).indexOf(n) >= 0; }
+  function outRow(n, cur, dev, path, list) {   // tap = speak there from now on; 🔈 = test it now; ♥ = one you like
+    var def = n === "default", on = !def && outHearted(n);
+    return '<div class="row vrow"><button class="pick" data-path="' + attr(path || ["mouth", "output"]) + '" data-value="' +
+      attr(list ? (def ? [] : [n]) : n) + '">' + text(def ? "Follow the Mac" : n, def ? "now " + (dev.out || "?") : "") +
+      '<span class="tick">' + (n === cur ? "✓" : "") + '</span></button>' +
+      act("say", "Test: say a line on " + (def ? "the Mac's output" : n), ["mouth", "test"], n, false, "🔈") +
+      (def ? '<span class="ic"></span>' : act("heart", on ? "Unheart" : "Heart", ["mouth", "heart"], { device: n, on: !on }, on, on ? "♥" : "♡")) +
+      '</div>';
+  }
+  // Output, folded to a single row showing the selected one: the one in use, with its tick;
+  // "All outputs" opens the rest in place, Follow the Mac first, and picking one folds it
+  // again. Hearts only keeps the rest to the hearted (Follow the Mac always stays).
+  function outputs(cur, dev, path, list) {   // path, list: a drawn screen's own (see audio-output)
+    var h = outRow(cur, cur, dev, path, list);
+    var rest = ["default"].concat(dev.outputs || []).filter(function (n) {
+      return n !== cur && (n === "default" || !heartsOnly || outHearted(n)); });
+    h += '<button class="row fold' + (outOpen ? " open" : "") + '" data-outfold="1">' +
+      text(heartsOnly ? "Hearted outputs" : "All outputs", "") + '<span class="val chev">' + rest.length + '</span></button>';
+    if (outOpen) rest.forEach(function (n) { h += outRow(n, cur, dev, path, list); });
+    return h;
+  }
+  // Input, folded like Output, showing only the selected one (Follow the Mac at first),
+  // from which another can be picked: the one in use with its tick; "All inputs" opens the
+  // rest in place; picking one folds it again.
+  function inRow(n, cur, dev, path) {
+    var def = n === "default";
+    return choice(def ? "Follow the Mac" : n, def ? "now " + (dev["in"] || "?") : "", path || ["ears", "input"], n, n === cur);
+  }
+  function inputs(cur, dev, path) {   // path: where a pick is written (a drawn screen passes its own)
+    var h = inRow(cur, cur, dev, path);
+    var rest = ["default"].concat(dev.inputs || []).filter(function (n) { return n !== cur; });
+    h += '<button class="row fold' + (inOpen ? " open" : "") + '" data-infold="1">' +
+      text("All inputs", "") + '<span class="val chev">' + rest.length + '</span></button>';
+    if (inOpen) rest.forEach(function (n) { h += inRow(n, cur, dev, path); });
+    return h;
+  }
+  // Screens drawn from a tool's JSON Schema (one
+  // general pattern, each tool's schema defines its settings; the ears first). The Mac sends
+  // tools.TOOL = {schema, value, file, schema_file, status?}; a tap sends ["tool", TOOL,
+  // key...] and the Mac checks the whole file against the schema before it writes it.
+  // A boolean is a switch; an enum, or an anyOf of titled consts, is a picker (a branch
+  // with no const is "type your own", its fields under it); a string or number is a line
+  // with 📝; an object is a group. `_` keys are notes for people, never drawn. Hints live
+  // in the schema as x- keywords: x-widget plugs in a built-in control ("audio-input": the
+  // Mac's inputs, folded), x-hint is the line under a label (else the description's first
+  // sentence).
+  var fieldEd = "", drafts = {}, otherOpen = {};
+  function canon(v) {
+    if (Array.isArray(v)) return v.map(canon);
+    if (v && typeof v === "object") { var o = {}; Object.keys(v).sort().forEach(function (k) { o[k] = canon(v[k]); }); return o; }
+    return v;
+  }
+  function same(a, b) { return JSON.stringify(canon(a)) === JSON.stringify(canon(b)); }
+  function hintOf(s) {
+    if (s["x-hint"] != null) return String(s["x-hint"]);
+    var d = String(s.description || ""), m = d.match(/^(.+?\.)(\s|$)/);
+    return m ? m[1] : d;
+  }
+  function branches(s) {   // a picker's options: an enum's values, or anyOf / oneOf
+    if (Array.isArray(s["enum"])) return s["enum"].map(function (v) { return { title: String(v), "const": v }; });
+    return s.anyOf || s.oneOf || null;
+  }
+  function optText(b) {   // "Parakeet (VoiceMode mlx-audio, :8890)" = label, then the hint
+    var t = b.title != null ? String(b.title) : JSON.stringify(b["const"]), m = t.match(/^(.+?)\s*\((.+)\)$/);
+    return m ? [m[1], b.description || m[2]] : [t, b.description || ""];
+  }
+  function fits(b, v) {   // does v take this branch: a const by equality, the free one by its type
+    if ("const" in b) return same(v, b["const"]);
+    if (b.type === "object") return v != null && typeof v === "object" && !Array.isArray(v);
+    if (b.type === "number" || b.type === "integer") return typeof v === "number";
+    return !!b.type && typeof v === b.type;
+  }
+  function picked(bs, v) {   // the branch in use: a const first, then the free one
+    for (var i = 0; i < bs.length; i++) if ("const" in bs[i] && fits(bs[i], v)) return i;
+    for (i = 0; i < bs.length; i++) if (!("const" in bs[i]) && fits(bs[i], v)) return i;
+    return -1;
+  }
+  function field(path, label, hint, v, type) {   // a line of text or a number, with 📝
+    var k = JSON.stringify(path);
+    if (fieldEd === k)
+      return '<div class="row"><span class="lab">' + esc(label) + '</span><input id="' + esc("f:" + k) + '" data-d="' +
+        esc(k) + '" type="' + (type === "string" ? "text" : "number") + '" enterkeyhint="done" value="' +
+        esc(drafts[k]) + '"></div><div class="row"><span class="hint">' + esc(hint) + '</span><span>' +
+        '<button class="pill" data-fcancel="1">Cancel</button><button class="pill" data-fsave="' + attr(path) +
+        '" data-ftype="' + esc(type) + '">Save</button></span></div>';
+    return '<div class="row">' + text(label, hint) + '<span class="val">' + esc(v == null ? "" : v) + '</span>' +
+      '<button class="ic" aria-label="Edit ' + esc(label) + '" data-fedit="' + attr(path) + '" data-fval="' +
+      attr(v == null ? "" : v) + '">' + EDIT + '</button></div>';
+  }
+  function freeRows(path, b, v) {   // the "type your own" branch: its fields, then Use these
+    var k = JSON.stringify(path), d = drafts[k];
+    if (!d) d = drafts[k] = JSON.parse(JSON.stringify(v && typeof v === "object" ? v : {}));
+    var h = "";
+    Object.keys(b.properties || {}).forEach(function (p) {
+      var ps = b.properties[p], need = (b.required || []).indexOf(p) >= 0;
+      h += '<div class="row"><span class="lab">' + esc(ps.title || p) + '</span><input id="' + esc("o:" + k + ":" + p) +
+        '" data-o="' + esc(k) + '" data-op="' + esc(p) + '" type="text" enterkeyhint="done" placeholder="' +
+        (need ? "needed" : "optional") + '" value="' + esc(d[p] == null ? "" : d[p]) + '"></div>';
+    });
+    return h + '<button class="row" data-osave="' + attr(path) + '">' + text("Use these", H() + " checks them first") + '</button>';
+  }
+  function control(tool, keys, s, v) {   // one property: {rows} sits in a card; {group, rows, foot} is its own
+    var path = ["tool", tool].concat(keys), label = s.title || keys[keys.length - 1], hint = hintOf(s);
+    if (v === undefined) v = s["default"];
+    if (s["x-widget"] === "audio-input")
+      return { group: label, rows: inputs(v || "default", S.devices || {}, path), foot: hint };
+    if (s["x-widget"] === "audio-output") {   // on an array: [] = Follow the Mac, a pick = [name]
+      var list = s.type === "array", oc = list ? ((v || [])[0] || "default") : (v || "default");
+      return { group: label, rows: outputs(oc, S.devices || {}, path, list), foot: s.description || "" };
+    }
+    if (s["x-widget"] === "voice-picker")   // the voice browser, as it is: auditions, hearts, families
+      return { rows: link(label, hint, vlabel(String(v || "")), "mouth-voice") };
+    if (s.type === "boolean") return { rows: row(label, hint, sw(path, v === true)) };
+    var bs = branches(s);
+    if (bs && bs.some(function (b) { return "const" in b; })) {
+      var at = picked(bs, v), ok = JSON.stringify(path), h = "";
+      bs.forEach(function (b, i) {
+        var t = optText(b);
+        if ("const" in b) { h += choice(t[0], t[1], path, b["const"], i === at && !otherOpen[ok]); return; }
+        var on = otherOpen[ok] || i === at;
+        h += '<button class="row" data-other="' + esc(ok) + '">' + text(t[0], t[1] || "type your own") +
+          '<span class="tick">' + (on ? "✓" : "") + '</span></button>' + (on ? freeRows(path, b, i === at ? v : {}) : "");
+      });
+      return { group: label, rows: h, foot: s.description || "" };
+    }
+    if (s.type === "string" || s.type === "number" || s.type === "integer") return { rows: field(path, label, hint, v, s.type) };
+    if (s.type === "object" && (s.properties || typeof s.additionalProperties === "object")) {
+      if (keys.length - pageKeys.length > 1)   // an object inside an object dives into its own page
+        return { rows: link(label, hint, summary(s, v), "tool:" + tool + "#" + keys.join("/")) };
+      var g = "";
+      members(s, v).forEach(function (m) { g += control(tool, keys.concat([m[0]]), m[1], (v || {})[m[0]]).rows || ""; });
+      return { group: label, rows: g, foot: hint };
+    }
+    return { rows: row(label, "this kind can't be drawn yet", '<span class="val">' + esc(JSON.stringify(v)) + '</span>', true) };
+  }
+  var pageKeys = [];   // the key path of the drawn page being built (drawn sets it)
+  function members(s, v) {   // [key, schema] to draw: the named properties, then a map's other entries
+    var out = [], props = s.properties || {}, extra = s.additionalProperties;
+    Object.keys(props).forEach(function (k) { if (k.charAt(0) !== "_" && k.charAt(0) !== "$") out.push([k, props[k]]); });
+    if (extra && typeof extra === "object") Object.keys(v || {}).forEach(function (k) {
+      if (!(k in props) && k.charAt(0) !== "_" && k.charAt(0) !== "$") out.push([k, extra]);
+    });
+    return out;
+  }
+  function summary(s, v) {   // a dive-in row's value: its first switch, On or Off
+    var ks = Object.keys(s.properties || {});
+    for (var i = 0; i < ks.length; i++) if (s.properties[ks[i]].type === "boolean")
+      return (v || {})[ks[i]] === true ? "On" : "Off";
+    return "";
+  }
+  function drawn(arg) {   // "ears" = the tool's page; "ears-sounds#sounds/turn" = one object inside it
+    var cut = arg.indexOf("#"), tool = cut < 0 ? arg : arg.slice(0, cut);
+    var sub = cut < 0 ? [] : arg.slice(cut + 1).split("/");
+    var t = (S.tools || {})[tool];
+    if (!t) return [tool, card(row("Not here", H() + " hasn't sent a schema for " + tool, "", true))];
+    var s = t.schema || {}, title = s.title || tool, v = t.value || {}, out = "", rows = "", st = t.status;
+    if (t.error) return [title, card(row("Can't draw it", t.error, "", true))];
+    for (var i = 0; i < sub.length; i++) {   // walk down to the object this page shows
+      s = (s.properties || {})[sub[i]] || (typeof s.additionalProperties === "object" ? s.additionalProperties : {});
+      v = (v || {})[sub[i]] || {};
+    }
+    if (sub.length) { title = s.title || sub[sub.length - 1]; st = null; }
+    pageKeys = sub;
+    var now = st ? row("Now", "", '<span class="val"><span class="dot' + (st.up ? " up" : "") + '"></span>' + esc(st.text) + '</span>') : "";
+    function flush() { if (rows || now) { out += card(rows + now); rows = now = ""; } }
+    members(s, v).forEach(function (m) {
+      var k = m[0], c = control(tool, sub.concat([k]), m[1], v[k]);
+      if (c.group == null) { rows += c.rows; return; }
+      flush();
+      out += group(c.group) + card(c.rows) + (c.foot ? '<div class="foot">' + esc(c.foot) + '</div>' : "");
+    });
+    flush();
+    var said = S.said && S.said.path && S.said.path[0] === "tool" && S.said.path[1] === tool
+      ? '<div class="foot warn">' + esc(H()) + ' said no: ' + esc(String(S.said.result).replace(/^refused: /, "")) + '</div>' : "";
+    return [title, said + out + '<div class="foot">Drawn from ' + esc(t.schema_file) + '. A change is checked against ' +
+      'it on ' + esc(H()) + ', then saved to ' + esc(t.file) + '.</div>'];
+  }
+  function bar() {   // where the mouth is going now, a tap away; ♥ = hearts only, everywhere
+    var mouth = (S && S.mouth) || {}, dev = (S && S.devices) || {}, cur = mouth.output || "default";
+    var where = cur === "default" ? "Follow the Mac · " + (dev.out || "?") : cur;
+    return '<button class="pick" data-bar="1">' + text("🔈 " + where, "the mouth speaks here · tap to change") +
+      '<span class="val">' + (barOpen ? "▾" : "▴") + '</span></button>' +
+      // a labelled switch, not a bare heart: a heart you tap reads as hearting something
+      // so it is clear the switch toggles show-only-hearts on or off
+      '<span class="barsw"><span class="hint">♥ only</span>' + lsw("hearts", heartsOnly) + '</span>' +
+      (me() ? '<button class="ic" data-go="profile" aria-label="You: signed in">👤</button>' : "");
+  }
+  // Signed in (the web only: Delta has no login, so there me() is null and none of this shows).
+  // Something that shows the user is logged in and opens their profile and security: in the
+  // bar, and maybe a main menu item.
+  function me() { return (window.webxdc && window.webxdc.auth) || null; }
+  function sheet() {   // the bar's small picker: Follow the Mac, your pick, the hearted; … = the full list
+    var mouth = S.mouth || {}, dev = S.devices || {}, cur = mouth.output || "default";
+    var h = outRow("default", cur, dev);
+    if (cur !== "default") h += outRow(cur, cur, dev);
+    (dev.outputs || []).forEach(function (n) { if (n !== cur && outHearted(n)) h += outRow(n, cur, dev); });
+    h += '<button class="row" data-go="' + ((S.tools || {}).mouth ? "tool:mouth" : "mouth") + '" data-openout="1">' +
+      text("…", "every output") + '<span class="val chev"></span></button>';
+    return '<div class="sheet">' + card(h) + '</div>';
+  }
+
+  var SCREENS = {
+    tool: drawn,
+    profile: function () {
+      var a = me();
+      if (!a) return ["You", card(row("Not signed in", "this page has no login in Delta Chat", "", true))];
+      var h = "";
+      (a.passkeys || []).forEach(function (k) {
+        h += irow(k.name || "passkey", "added " + (k.added || "?").replace("T", " ").slice(0, 16) + " · " + k.rp_id,
+          '<button class="ic" aria-label="Rename this passkey" data-rename="' + attr({ id: k.id, name: k.name || "" }) + '">' + EDIT + '</button>' +
+          '<button class="pill" data-remove="' + attr({ id: k.id, name: k.name || "passkey" }) + '">Remove</button>');
+      });
+      return ["You", card(row(a.user, "signed in " + a.since + " with a passkey", "")) +
+        group("Passkeys") + card((h || row("None", "", "", true)) +
+          '<button class="row" data-addkey="1">' + text("Add a passkey", "a YubiKey, or a device that doesn't sync") + '</button>') +
+        card('<button class="row" data-signout="1">' + text("Sign out", "this tab; the next visit asks for Touch ID or Face ID") + '</button>') +
+        '<div class="foot">A passkey made on the Mac syncs to your iPhone through iCloud Keychain, so Face ID ' +
+        'opens the same address there.</div>'];
+    },
+    home: function () {   // THE CONSENT PAGE (every small line one
+      // measured true). A row states a live value, never a fixed one.
+      var ears = S.ears || {}, cap = ears.capture || {}, dev = S.devices || {}, T = S.tools || {};
+      var ev = (T.ears || {}).value || {}, on = ears.listen !== false, eng = engine();
+      var now = cap.device || dev["in"] || "", mic = devName(ears.input || "default", now);
+      var gOn = get(S, ["global", "allow"]) !== false;
+      var gPath = T["notifications/global"] ? ["tool", "notifications/global", "allow"] : ["global", "allow"];
+      if (T["notifications/global"]) gOn = (T["notifications/global"].value || {}).allow !== false;
+      var roomOff = ev.room_on_call !== true;   // the switch reads "off during calls"; a tap sends room_on_call = roomOff
+      var rec = ev.record === true, days = ev.record_days; if (!(typeof days === "number" && days >= 0)) days = 7;
+      var kept = !rec ? "No audio. Your words are kept, in the log and in mail."
+        : days === 0 ? "Audio and your words are kept, in the log and in mail."
+        : "Audio " + days + (days === 1 ? " day" : " days") + ". Your words are kept, in the log and in mail.";
+      var snd = ears.sounds || {}, turn = (snd.sounds || {}).turn || {};
+      var sOn = !!ears.sounds_service && snd.allow !== false && turn.on !== false;   // all three must hold
+      // names, up to four, then "and N more"; never an id on a consent page; N counts
+      // the names past four and the sessions the host could not name, so it never says fewer
+      var hs = S.hears || {}, names = (hs.names || []).map(nameOf), extra = (hs.more || 0) + Math.max(0, names.length - 4);
+      var who = names.length ? names.slice(0, 4).join(", ") + (extra ? ", and " + extra + " more" : "")
+        : extra ? extra + " not named here" : "No agent is listening yet";
+      return [hostTitle(),
+        group(on ? "Hear the room" : "Before the ears listen") +
+        card('<div class="row big">' + text("Hear the room", on ? (now || mic) + " · " + eng.name + (eng.local ? ", on this Mac" : " at " + eng.host)
+          : "Off until you turn it on.") + sw(["ears", "listen"], on) + '</div>') +
+        group("What listens") + card(
+          link("Microphone", "", mic, "mic") +
+          link("Engine", eng.local ? "On this Mac. Your voice stays here; your words go to the agents who can hear."
+            : "At " + eng.host + ". Your voice goes there; your words go to the agents who can hear.", eng.name, "engine")) +
+        group("Who can hear") + card(
+          row(who, "", "") +
+          row("Calls", "Only people you approve. Each caller is tied to a key.", "")) +
+        group("When, and what is kept") + card(
+          row("Off during your agents' calls", "On a phone or FaceTime call the ears keep listening. Turn them off.",
+              sw(["tool", "ears", "room_on_call"], roomOff, roomOff)) +
+          row("What is kept", kept, "") +
+          (ears.sounds_service
+            ? row("Ear sounds", "On: a tick each time your words are caught.", '<button class="sw' + (sOn ? " on" : "") +
+                '" data-earsounds="' + (sOn ? "off" : "on") + '" aria-pressed="' + sOn + '"></button>')
+            : row("Ear sounds", "The sounds service is not installed on " + H() + ".", '<span class="val">Not installed</span>'))) +
+        (!on ? '<button class="cta" data-path="' + attr(["ears", "listen"]) + '" data-value="true">Turn the ears on</button>' : "") +
+        '<div class="foot doc"><a href="#" data-go="doc">What listens, who can hear, and when — the plain document</a></div>' +
+        group("More") + card(
+          row("Allow notifications", "every sound, one switch", sw(gPath, gOn)) +
+          link("Mouth", "where I speak", devName((S.mouth || {}).output, "") === "Follow the Mac" ? (dev.out || "default") : (S.mouth || {}).output,
+               T.mouth ? "tool:mouth" : "mouth") +
+          link("All ear sounds", "a sound for each thing the ears do", sOn ? "On" : "Off",
+               T["ears/ears-sounds"] ? "tool:ears/ears-sounds" : "sounds") +
+          (T[talkKey(T)] ? talkDebug(T[talkKey(T)], talkKey(T)) : "") +
+          row("Eyes", "later", '<span class="val">soon</span>', true)) +
+        (me() ? group("This browser") + card(link("👤 " + me().user, "signed in with a passkey", "", "profile")) : "")];
+    },
+    doc: function () {   // THE PLAIN DOCUMENT: docs/what-listens.md, ONE file in the kit (GitHub readers and this
+      // screen read the same text), fetched from the server (docs()), its
+      // `<angle>` tokens the live values, then the live rows: what this Mac is doing right now.
+      var ears = S.ears || {}, cap = ears.capture || {}, dev = S.devices || {}, T = S.tools || {};
+      var ev = (T.ears || {}).value || {}, on = ears.listen !== false, eng = engine(), host = H();
+      var now = cap.device || dev["in"] || "the Mac's default input", mic = devName(ears.input || "default", now);
+      var hs = S.hears || {}, by = hs.by || {}, names = (hs.names || []).map(nameOf);
+      var rec = ev.record === true, days = ev.record_days; if (!(typeof days === "number" && days >= 0)) days = 7;
+      var kept = !rec ? "not recorded" : days === 0 ? "recorded, kept until you delete it"
+        : "recorded, kept " + days + (days === 1 ? " day" : " days");
+      var live = { microphone: mic, engine: eng.name + (eng.local ? ", on this Mac" : ", at " + eng.host),
+        names: names.length ? names.join(", ") + (hs.more ? ", and " + hs.more + " more" : "") : "no agent is listening yet",
+        kept: kept };
+      var who = "";
+      Object.keys(by).forEach(function (t) {
+        var ns = by[t].map(nameOf), shown = ns.slice(0, 4).join(", ") + (ns.length > 4 ? ", and " + (ns.length - 4) + " more" : "");
+        who += row(shown, t === "room" ? "every input's turns (heard+room)" : "turns from the " + t.slice(1) + " only (heard" + t + ")", "");
+      });
+      if (!who) who = row("No agent is listening yet", "no seat gets the room's turns by mail; the log and Talk still have them", "");
+      if (DOC.text === undefined && !DOC.asked) fetchDoc();
+      var prose = DOC.text ? '<div class="card"><div class="prose">' + md(DOC.text, live) + '</div></div>'
+        : DOC.missing ? card(row("Not installed on " + host, "The document is docs/what-listens.md in the sessionkit repo; it was not found at " + DOC.missing + ".", "", true))
+        : card(row("Loading…", "", "", true));
+      return ["What listens, who can hear, and when", prose +
+        group("Right now on " + host) + card(
+          row("The room's ear", on ? now + ", the input the keeper follows" : "off; nothing is captured", '<span class="val">' + (on ? (cap.up ? "capturing" : "starting") : "off") + '</span>') +
+          row("The engine", eng.local ? "on this Mac; your voice stays here" : "at " + eng.host + "; your voice goes there", '<span class="val">' + esc(eng.name) + '</span>') +
+          who +
+          row("During your agents' calls", ev.room_on_call === true ? "the room's ear stays on; both are heard" : "the room's ear stops while a call is live", "") +
+          row("Audio", kept, "") +
+          // a missing key is ON: the schema's default and recording.py's reading
+          row("Notice on a recorded call", (ev.record_notice !== false ? "a line in the chat" : "no line in the chat") + "; " + (ev.record_spoken_notice !== false ? "said on the call" : "not said on the call") + ", as the file says", "")) +
+        group("How to stop it") + card(
+          row("Hear the room, off", "the switch on the Settings page, or Turn off in the strip; the keeper reads it every second", "") +
+          row("Recording, off", "ears recording off on " + host + "; the words are still written; audio stops at once, unless the capture was started with EARS_RECORD set (the keeper log's start note says which)", "") +
+          row("A seat, out", "message subscription remove heard+<device>, in that seat", "")) +
+        '<div class="foot">Live rows are this page\'s state. The document above is the kit\'s docs/what-listens.md.</div>'];
+    },
+    mic: function () {   // the Microphone dive: the inputs, as the Ears screen lists them
+      var ears = S.ears || {}, dev = S.devices || {};
+      return ["Microphone", card(inputs(ears.input || "default", dev)) +
+        '<div class="foot">Following the Mac means AirPods out → the laptop mic, AirPods back → the AirPods.</div>'];
+    },
+    engine: function () {   // the Engine dive: the schema's picker for ears.final, as the full page draws it
+      var t = (S.tools || {}).ears, fs = t && ((t.schema || {}).properties || {})["final"];
+      if (!fs) return ["Engine", card(row("Not here", H() + " hasn't sent the ears' schema", "", true))];
+      var c = control("ears", ["final"], fs, (t.value || {})["final"]);
+      return ["Engine", card(c.rows) + (c.foot ? '<div class="foot">' + esc(c.foot) + '</div>' : "")];
+    },
+    ears: function () {
+      var ears = S.ears || {}, cap = ears.capture || {}, dev = S.devices || {};
+      var on = ears.listen !== false;
+      var status = !on ? "Stopped" : cap.up ? "Capturing on " + cap.device : "Starting…";
+      return ["Ears", card(
+          row("Listening", "for everyone on " + H() + ": off stops all listening", sw(["ears", "listen"], on)) +
+          row("Now", "", '<span class="val"><span class="dot' + (cap.up ? " up" : "") + '"></span>' + esc(status) + '</span>')) +
+        group("Input") + card(inputs(ears.input || "default", dev)) +
+        '<div class="foot">Following the Mac means AirPods out → the laptop mic, AirPods back → the AirPods.</div>'];
+    },
+    mouth: function () {
+      var mouth = S.mouth || {}, dev = S.devices || {}, cur = mouth.output || "default";
+      // Voice above Output: voice belongs at the top.
+      return ["Mouth", group("Voice") +
+        card(link("Voice", "when a line names no voice", mouth.voice || "af_sky", "mouth-voice")) +
+        group("Output") + card(outputs(cur, dev)) +
+        '<div class="foot">🔈 says a line on that output now, to test it. ♥ the ones you use; the ♥ only ' +
+        'switch in the bar below then shows just those.</div>'];
+    },
+    "mouth-voice": function () {
+      var m = M(), vs = m.voices || {}, fam = m.families || {}, cur = m.voice || "af_sky";
+      var kokoro = vs.kokoro || [], clone = vs.clone || [];
+      if (!kokoro.length && !clone.length) return ["Voice", card(row("No list yet", H() + " hasn't sent the voices it can speak", "", true))];
+      var k = "", c = "";
+      Object.keys(fam.kokoro || {}).forEach(function (f) { k += fold("k:" + f, famName(f), fam.kokoro[f], cur); });
+      k += fold("k:", "Other Kokoro", kokoro.filter(function (v) { return !familyOf(v); }), cur);
+      Object.keys(fam.clone || {}).sort().forEach(function (f) { c += fold("c:" + f, famName(f), fam.clone[f], cur); });
+      c += fold("c:", "On their own", clone.filter(function (v) { return !familyOf(v); }), cur);
+      var nHid = kokoro.concat(clone).filter(isHidden).length;
+      // The voice in use first: the voice actually being used is the first one.
+      var top = link("The mouth's voice", "for a line that names none", vlabel(cur), "voice:" + cur) +
+        link("They'll say", "“" + (P().phrase || "") + "”", "Change", "phrase") +
+        row("Hearts only", "just the voices you've hearted", lsw("hearts", heartsOnly)) +
+        (nHid || showHidden ? row("Show hidden (" + nHid + ")", "the voices you've hidden, each with Unhide",
+          lsw("hidden", showHidden)) : "");
+      var empty = heartsOnly && !k && !c ? card(row("No hearts yet", "tap ♡ on a voice", "", true)) : "";
+      return ["Voice", card(top) + empty + (k ? group("Kokoro") + card(k) : "") + (c ? group("Cloned") + card(c) : "") +
+        '<div class="foot">🔈 says the phrase in that voice, on ' + esc(H()) + '. Tap a name to see its references. ' +
+        'Swipe a row left to hide it. Agents that name their own voice keep it.</div>'];
+    },
+    phrase: function () {
+      var p = P(), cur = p.phrase || "", h = "";
+      (p.phrases || []).forEach(function (t) { h += choice(t, "", ["voices", "phrase"], t, t === cur); });
+      var own = '<div class="row"><input id="ph" type="text" maxlength="200" enterkeyhint="done" ' +
+        'placeholder="Type your own…" value="' + esc(draft) + '"></div>' +
+        '<button class="row" data-act="try">' + text("Try it", "they'll say this; it isn't kept") + '</button>' +
+        '<button class="row" data-act="add"' + (savingAct === "add" ? " disabled" : "") + '>' +
+        text("Add to list", saveHint("add", "keep it for next time")) + savedMark("add") + '</button>';
+      return ["Phrase", card(row("Now", "“" + cur + "”", "")) + group("Pick one") + card(h) + group("Your own") + card(own) +
+        '<div class="foot">What you type is only kept if you tap Add to list. Then tap 🔈 on any voice.</div>'];
+    },
+    line: function (v) {   // her line picker: her lines, then the family's, then everyone's
+      var p = P(), cur = lineFor(v, true), lk = lockedOf(v), fam = familyOf(v), seen = {};
+      function list(arr, level) {   // tap a line to say it from now on; 📝 edits it where it's kept
+        var h = "";
+        arr.forEach(function (t) {
+          if (!t || seen[t]) return;   // a line saved at two levels shows once, at the nearer
+          seen[t] = 1;
+          if (editing && editing.level === level && editing.old === t) {
+            h += '<div class="row"><input id="ed" type="text" maxlength="200" enterkeyhint="done" value="' + esc(edDraft) + '"></div>' +
+              '<div class="row"><span class="hint">changes it everywhere it is used</span><span>' +
+              '<button class="pill" data-edit-cancel="1">Cancel</button>' +
+              '<button class="pill" data-edit-save="1" data-voice="' + esc(v) + '">Save</button></span></div>';
+            return;
+          }
+          h += '<div class="row vrow"><button class="pick" data-path="' + attr(["voices", "line"]) + '" data-value="' +
+            attr({ voice: v, text: t }) + '">' + text(t, t === lk ? "🔒 the default" : "") +
+            '<span class="tick">' + (t === cur ? "✓" : "") + '</span></button>' +
+            '<button class="ic" aria-label="Edit this line" data-edit="' + attr({ level: level, old: t }) + '">' + EDIT + '</button></div>';
+        });
+        return h;
+      }
+      var mine = list((lk ? [lk] : []).concat((p.voice_lines || {})[v] || []), "voice");
+      var ours = fam ? list((p.family_lines || {})[fam] || [], "family") : "";
+      var every = list(p.phrases || [], "global");
+      function save(a, label, hint) {
+        return '<button class="row" data-act="' + a + '" data-voice="' + esc(v) + '"' + (savingAct === a ? " disabled" : "") + '>' +
+          text(label, saveHint(a, hint)) + savedMark(a) + '</button>';
+      }
+      var own = '<div class="row"><input id="ph" type="text" maxlength="200" enterkeyhint="done" ' +
+        'placeholder="Type your own…" value="' + esc(draft) + '"></div>' +
+        save("ltry", "Try it", "this voice says it; it isn't kept") +
+        save("lvoice", "Save for " + vlabel(v), "kept for this voice only") +
+        (fam ? save("lfamily", "Save for " + famName(fam), "kept for every voice in the family") : "") +
+        save("lglobal", "Save for everyone", "kept for every voice");
+      return ["Line", card(irow("Now", "“" + cur + "”", speakPage(v) + lockBtn(v))) +
+        (mine ? group(vlabel(v) + "'s lines") + card(mine) : "") +
+        (ours ? group(famName(fam) + "'s lines") + card(ours) : "") +
+        (every ? group("Everyone's lines") + card(every) : "") + group("Your own") + card(own) +
+        '<div class="foot">A line you pick stays with this voice. 🔒 makes it the default: the line 🔈 ' +
+        'in the voice list says. Trying other lines never moves it.</div>'];
+    },
+    voice: function (v) {
+      var m = M(), p = P(), cur = m.voice || "af_sky", fam = familyOf(v), smp = (m.samples || {})[v];
+      var out = card(choice("Use as the mouth's voice", "for a line that names none", ["mouth", "voice"], v, v === cur) +
+        irow("Line", "“" + lineFor(v, true) + "”" + (!lockedOf(v) ? "" : lockedOf(v) === lineFor(v, true)
+          ? " · the default" : " · default: “" + lockedOf(v) + "”"), speakPage(v) + lockBtn(v) + editLine(v)) +
+        irow("Heart", hearted(v) ? "you like this one" : "", heart(v)) +
+        irow("Hide from the list", isHidden(v) ? "hidden: shown only with Show hidden" : "or swipe its row left", pill(v)));
+      if (fam) {
+        var now = (p.stars || {})[fam], starred = now === v;
+        out += group(famName(fam)) + card(irow("Family favourite",
+          starred ? "the one star in " + famName(fam) : now ? "now: " + vlabel(now) : "none yet",
+          act("star", starred ? "Unstar" : "Star", ["voices", "star"], { family: fam, voice: starred ? null : v }, starred, starred ? "★" : "☆")));
+      }
+      // References = the clips a clone is made from; ♥ = the ones we'd use (several),
+      // ★ = the default (repoints default.wav). Samples = generated examples, folded
+      // below.
+      if (smp && (smp.samples || []).length) {
+        var s = "", fixed = smp["default"] === null;
+        var refs = heartsOnly ? smp.samples.filter(function (n) { return refHearted(v, n); }) : smp.samples;
+        refs.forEach(function (n) {
+          var d = n === smp["default"], on = refHearted(v, n);
+          s += irow(n.replace(/-/g, " "), d ? "the default" : "",
+            act("play", "Play " + n, ["voices", "play"], { voice: v, sample: n }, false, "▶") + cloneBtn(v, n, smp) +
+            act("heart", on ? "Unheart" : "Heart", ["voices", "refheart"], { voice: v, ref: n, on: !on }, on, on ? "♥" : "♡") +
+            (fixed ? "" : act("star", d ? "The default reference" : "Star as the default", ["voices", "sample"], { voice: v, sample: n }, d, d ? "★" : "☆")));
+        });
+        if (!refs.length) s = row("No hearted references", "tap ♡ on a reference", "", true);
+        var can = smp.samples.filter(function (n) { return (smp.notext || []).indexOf(n) < 0; }).length;
+        var nMade = (smp.made || []).length, all = ["voices", "audition", "all"];
+        var mk = row("Make them all", (smp.batch ? "making… " : "") + nMade + " of " + can + " made for this line",
+          '<button class="pill" data-path="' + attr(all) + '" data-value="' + attr({ voice: v }) + '"' +
+          (smp.batch || nMade >= can ? " disabled" : "") + '>' + (smp.batch ? "Making…" : nMade >= can ? "Done" : "Make") + '</button>');
+        out += group("References") + card(row("Hearts only", "just the references you've hearted", lsw("hearts", heartsOnly)) + mk + s) +
+          '<div class="foot">▶ plays the clip itself. 🔈 plays the line cloned from that one clip, made once on ' + esc(H()) + ' and ' +
+          'then kept: 🔊 made, ⏳ making, 🔇 no transcript, so it can\'t be cloned from. ' + (fixed
+          ? "This voice's default.wav is a real file, not a link, so its default can't be moved from here. "
+          : "★ is the default reference, the clip the clone speaks from: tapping ☆ repoints default.wav. ") +
+          "♥ as many as you like: the references we'd use.</div>";
+      } else if (!smp) {
+        out += '<div class="foot">A Kokoro voice has no references.</div>';
+      }
+      var sk = "s:" + v;
+      out += card('<button class="row fold' + (open[sk] ? " open" : "") + '" data-fold="' + esc(sk) + '">' +
+        text("Samples", "generated examples, auditions") + '<span class="val chev">0</span></button>' +
+        (open[sk] ? row("None yet", "they land here once the mouth keeps what it says", "", true) : ""));
+      return [vlabel(v), out];
+    },
+    sounds: function () {
+      var gOn = get(S, ["global", "allow"]) !== false;
+      var snd = get(S, ["ears", "sounds"]) || {}, eOn = snd.allow !== false, off = !gOn || !eOn;
+      var h = row("Allow", gOn ? "sounds from the ears" : "all notifications are off", sw(["ears", "sounds", "allow"], eOn), !gOn);
+      var kinds = snd.sounds || {};
+      Object.keys(kinds).forEach(function (k) {
+        var lab = SOUND[k] || [k, ""];
+        h += row(lab[0], lab[1], sw(["ears", "sounds", "sounds", k, "on"], !!kinds[k].on), off);
+      });
+      var to = (snd.to && snd.to.length) ? snd.to[0] : "";
+      return ["Sounds", card(h) + group("Play on") + card(
+        link("Output", "", to || "Follow the Mac", "sounds-to", off) +
+        row("Follow the mic", "the speaker that goes with the mic in use", sw(["ears", "sounds", "pair"], !!snd.pair), off))];
+    },
+    "sounds-to": function () {
+      var snd = get(S, ["ears", "sounds"]) || {}, dev = S.devices || {};
+      var to = (snd.to && snd.to.length) ? snd.to[0] : "";
+      var h = choice("Follow the Mac", "now " + (dev.out || "?"), ["ears", "sounds", "to"], [], !to);
+      (dev.outputs || []).forEach(function (n) { h += choice(n, "", ["ears", "sounds", "to"], [n], to === n); });
+      return ["Play on", card(h)];
+    }
+  };
+
+  function screen(name) {   // "voice:monkey/pigsy" = the voice screen, for that voice
+    var i = name.indexOf(":"), base = i < 0 ? name : name.slice(0, i);
+    return (SCREENS[base] || SCREENS.home)(i < 0 ? "" : name.slice(i + 1));
+  }
+  // THE SHELL. Talk's URL: ?talk=URL, else /talk/ beside /settings/ (tailscale serve), else Talk's
+  // own port on this host. The ear strip is drawn from the ears' state; Turn off is ears.listen=false,
+  // the same path the Ears screen sets. First run: the ears off = Settings first (the consent).
+  var inXdc = !/^https?:$/.test(location.protocol), firstState = true;
+  if (inXdc) document.body.classList.add("xdc");
+  function talkUrl() {
+    var q = /[?&]talk=([^&]+)/.exec(location.search);
+    if (q) return decodeURIComponent(q[1]);
+    if (location.pathname.indexOf("/settings") === 0) return "/talk/";
+    return location.protocol + "//" + location.hostname + ":8780/";
+  }
+  var wide = window.matchMedia ? window.matchMedia("(min-width: 900px)") : { matches: false };
+  function loadTalk() {   // Talk on screen = Talk loaded: the wide page, or the Talk tab
+    var f = document.getElementById("talk");
+    if (!inXdc && !f.getAttribute("src") && (wide.matches || document.body.dataset.room === "talk")) f.setAttribute("src", talkUrl());
+  }
+  if (wide.addEventListener) wide.addEventListener("change", loadTalk);
+  function toTop() { window.scrollTo(0, 0); document.getElementById("room-settings").scrollTop = 0; }
+  function side(shown) {   // wide only: Settings ‹ / › in the strip, remembered on this browser
+    document.body.dataset.settings = shown ? "" : "hidden";
+    var b = document.getElementById("side");
+    b.textContent = shown ? "Settings ›" : "‹ Settings"; b.setAttribute("aria-pressed", String(shown));
+    try { localStorage.setItem("settled.settings", shown ? "shown" : "hidden"); } catch (e) {}
+  }
+  try { if (localStorage.getItem("settled.settings") === "hidden") side(false); } catch (e) {}
+  function showRoom(name) {
+    document.body.dataset.room = name;
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle("on", tabs[i].dataset.room === name);
+    document.getElementById("room-talk").classList.toggle("hidden", name !== "talk");
+    document.getElementById("room-settings").classList.toggle("hidden", name !== "settings");
+    loadTalk();
+  }
+  loadTalk();
+  function drawEar() {
+    // The strip reads the keeper's LIVE state (ears.capture.up, .device), as the Ears screen's
+    // "Capturing on" line does, not the setting alone: listen missing = on, as the keeper reads it.
+    // The red dot means capturing now. The second line is the device and
+    // the engine; the ear-sounds truth is the consent page's row.
+    var e = document.getElementById("ear"), ears = S && S.ears || null, cap = ears && ears.capture || {};
+    var on = !!ears && ears.listen !== false, up = on && !!cap.up;
+    e.classList.toggle("off", !up);
+    var dev = cap.device || (ears && ears.input) || "default", eng = S ? engine().name : "";
+    e.querySelector("b").textContent = !S ? "Not signed in" : !on ? "The ears are off" : up ? "Hearing the room" : "Starting the ears…";
+    e.querySelector("span").textContent = !S ? "The ear strip shows the ears' state once you sign in"
+      : !on ? "Nothing is heard while they are off" : [dev, eng].filter(Boolean).join(" · ");
+    // Its button says what it does (a mute reads as temporary, and this is not): it
+    // sets ears.listen, the same as the switch on the consent page. Off, the strip offers Turn on.
+    var btn = e.querySelector("[data-listen]");
+    if (S && !btn) { btn = document.createElement("button"); e.insertBefore(btn, document.getElementById("side")); }
+    if (!S && btn) { btn.remove(); btn = null; }
+    if (btn) { btn.textContent = on ? "Turn off" : "Turn on"; btn.dataset.listen = on ? "off" : "on"; }
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest(".tab");
+    if (t) { showRoom(t.dataset.room); return; }
+    if (e.target.dataset && e.target.dataset.listen) { send(["ears", "listen"], e.target.dataset.listen === "on"); }
+    if (e.target.dataset && e.target.dataset.side) { side(document.body.dataset.settings === "hidden"); }
+  });
+  var talkDbg;   // Talk reads show_debug when it loads: reload its frame when the setting changes
+  function render() {
+    var td = !!S && get(S, ["tools", talkKey(S.tools), "value", "show_debug"]) === true;
+    if (talkDbg !== undefined && td !== talkDbg) { var tf = document.getElementById("talk"); if (tf.getAttribute("src")) tf.src = tf.getAttribute("src"); }
+    if (S) talkDbg = td;
+    drawEar();
+    if (S && firstState) { firstState = false; if (!inXdc) showRoom(S.ears && S.ears.listen ? "talk" : "settings"); }
+    var el = document.getElementById("app");
+    var name = stack[stack.length - 1];
+    document.body.dataset.screen = stack.length > 1 ? "below" : "home";
+    document.getElementById("nav").innerHTML = stack.length > 1
+      ? '<button class="back" data-back="1">' + esc(stack.length > 2 ? titleOf(stack[stack.length - 2]) : "Settings") + '</button>' : "";   // the host is in the strip
+    if (!S) { el.innerHTML = ""; return; }
+    var r = screen(name);
+    var ae = document.activeElement, typing = ae && ae.tagName === "INPUT" && ae.id ? ae.id : "";
+    var caret = typing ? ae.selectionStart : 0;
+    document.getElementById("title").textContent = r[0];
+    document.getElementById("sub").textContent = "as of " + (at || "?") + " · " + H() + (pending ? " · sending…" : "");
+    el.innerHTML = r[1];
+    var mouthBar = name !== "home" || (S.ears && S.ears.listen !== false);
+    if (!mouthBar) barOpen = false;
+    document.getElementById("bar").innerHTML = mouthBar ? bar() : "";
+    document.getElementById("sheet").innerHTML = barOpen ? sheet() : "";
+    var ph = typing && document.getElementById(typing);   // a push from the Mac must not eat what he's typing
+    if (ph) { ph.focus(); try { ph.setSelectionRange(caret, caret); } catch (e) {} }
+  }
+  function titleOf(name) { try { return S ? screen(name)[0] : name; } catch (e) { return name; } }
+
+  // The swipe: touch only, no library. 10 px decides the axis; vertical is left to
+  // the page's scroll, horizontal moves the row. Past half the Hide button's width
+  // on release, the row stays open; one row open at a time. A tap elsewhere closes it.
+  var SW = 88, drag = null, swallow = 0;
+  function setOpen(v) {
+    swOpen = v; swHid = v !== null && isHidden(v);
+    var boxes = document.querySelectorAll ? document.querySelectorAll(".swipe") : [];
+    for (var i = 0; i < boxes.length; i++) {
+      var r = boxes[i].querySelector(".vrow");
+      boxes[i].classList.toggle("open", !!r && v !== null && r.dataset.swipe === v);
+    }
+  }
+  document.addEventListener("touchstart", function (e) {
+    var r = e.target.closest && e.target.closest(".swipe > .vrow");
+    if (!r || e.touches.length !== 1) { drag = null; return; }   // a swipe may start on 🔈 or ♡ too
+    var t = e.touches[0];
+    drag = { el: r, box: r.parentNode, v: r.dataset.swipe, x: t.clientX, y: t.clientY, dx: 0, axis: "",
+             base: r.parentNode.classList.contains("open") ? -SW : 0 };
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!drag) return;
+    var t = e.touches[0], dx = t.clientX - drag.x, dy = t.clientY - drag.y;
+    if (!drag.axis) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      drag.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (drag.axis === "y") { drag = null; return; }   // a scroll: leave it to the page
+      drag.box.classList.add("drag");
+    }
+    e.preventDefault();
+    drag.dx = dx;
+    drag.el.style.transform = "translateX(" + Math.max(-SW * 1.5, Math.min(0, drag.base + dx)) + "px)";
+  }, { passive: false });
+  function endDrag(cancel) {
+    var d = drag; drag = null;
+    if (!d || d.axis !== "x") return;
+    d.box.classList.remove("drag"); d.el.style.transform = "";
+    swallow = Date.now() + 400;   // the click a swipe can leave behind must not dive in
+    setOpen(!cancel && d.base + d.dx < -SW / 2 ? d.v : null);
+  }
+  document.addEventListener("touchend", function () { endDrag(false); });
+  document.addEventListener("touchcancel", function () { endDrag(true); });
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id === "ph") draft = e.target.value;
+    if (e.target.id === "ed") edDraft = e.target.value;
+    if (e.target.dataset.d) drafts[e.target.dataset.d] = e.target.value;
+    if (e.target.dataset.o) (drafts[e.target.dataset.o] = drafts[e.target.dataset.o] || {})[e.target.dataset.op] = e.target.value;
+  });
+  document.addEventListener("click", function (e) {
+    if (Date.now() < swallow) { e.preventDefault(); return; }
+    var b = e.target.closest("button, [data-go]"); if (!b || b.disabled) return;
+    if (b.tagName === "A") e.preventDefault();
+    if (b.dataset.earsounds) {   // off: allow=false; on: allow=true, and the turn tick on if it was off
+      if (b.dataset.earsounds === "off") send(["ears", "sounds", "allow"], false);
+      else { send(["ears", "sounds", "allow"], true);
+        var tn = ((S.ears || {}).sounds || {}).sounds || {}; if (tn.turn && tn.turn.on === false) send(["ears", "sounds", "sounds", "turn", "on"], true); }
+      return;
+    }
+    if (swOpen !== null && !b.classList.contains("swipe-act")) { setOpen(null); return; }  // as iOS: a tap closes it
+    var inSheet = !!b.closest(".sheet");
+    if (barOpen && !inSheet && !b.dataset.bar) { barOpen = false; render(); if (!b.closest(".bar")) return; }
+    if (b.dataset.bar) { barOpen = !barOpen; render(); return; }
+    if (b.dataset.signout) { if (me()) me().signOut(); return; }
+    if (b.dataset.addkey) { if (me()) me().addKey(); return; }
+    if (b.dataset.remove) {   // remove the passkey; web.py keeps the last one
+      var rm = JSON.parse(b.dataset.remove);
+      if (me() && confirm("Remove the passkey \"" + rm.name + "\"? It won't open Settings any more.")) me().remove(rm.id);
+      return; }
+    if (b.dataset.rename) {   // 📝 = edit (the design language): a name for the passkey
+      var rk = JSON.parse(b.dataset.rename), nn = prompt("Name this passkey", rk.name);
+      if (nn !== null && me()) me().rename(rk.id, nn); return; }
+    if (b.dataset.back) { stack.pop(); render(); toTop(); return; }
+    if (b.dataset.fold !== undefined) { open[b.dataset.fold] = !open[b.dataset.fold]; render(); return; }
+    if (b.dataset.outfold) { outOpen = !outOpen; render(); return; }
+    if (b.dataset.infold) { inOpen = !inOpen; render(); return; }
+    if (b.dataset.local === "hearts") { heartsOnly = !heartsOnly; render(); return; }
+    if (b.dataset.local === "hidden") { showHidden = !showHidden; render(); return; }
+    if (b.dataset.edit) { editing = JSON.parse(b.dataset.edit); edDraft = editing.old; render();
+      var ed = document.getElementById("ed"); if (ed) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); } return; }
+    if (b.dataset.editCancel) { editing = null; render(); return; }
+    if (b.dataset.other) { otherOpen[b.dataset.other] = !otherOpen[b.dataset.other]; render(); return; }
+    if (b.dataset.fedit) {
+      fieldEd = b.dataset.fedit; drafts[fieldEd] = String(JSON.parse(b.dataset.fval)); render();
+      var fe = document.getElementById("f:" + fieldEd); if (fe) fe.focus(); return; }
+    if (b.dataset.fcancel) { fieldEd = ""; render(); return; }
+    if (b.dataset.fsave) {
+      var fv = (drafts[b.dataset.fsave] || "").trim(), ft = b.dataset.ftype;
+      fieldEd = "";
+      if (ft === "string") send(JSON.parse(b.dataset.fsave), fv);
+      else if (fv !== "" && !isNaN(Number(fv))) send(JSON.parse(b.dataset.fsave), Number(fv));
+      else render();
+      return;
+    }
+    if (b.dataset.osave) {   // the free branch's fields as one value; an empty field is left out
+      var od = drafts[b.dataset.osave] || {}, ov = {};
+      Object.keys(od).forEach(function (q) { var x = String(od[q]).trim(); if (x) ov[q] = x; });
+      otherOpen[b.dataset.osave] = false;
+      send(JSON.parse(b.dataset.osave), ov);
+      return;
+    }
+    if (b.dataset.editSave) {
+      var nt = edDraft.replace(/\s+/g, " ").trim();
+      if (nt && editing && nt !== editing.old)
+        send(["voices", "lines", "edit"], { voice: b.dataset.voice, level: editing.level, old: editing.old, text: nt });
+      editing = null; render(); return;
+    }
+    if (b.dataset.act) {
+      var t = draft.replace(/\s+/g, " ").trim(), a = b.dataset.act, bv = b.dataset.voice; if (!t) return;
+      if (a === "try") send(["voices", "phrase"], t);
+      else if (a === "ltry") send(["voices", "say"], { voice: bv, text: t });   // said once, kept nowhere
+      else {   // a save: one at a time, then ✓ Saved once the Mac's state comes back
+        if (savingAct) return;
+        savingAct = a; savedAct = "";
+        if (a === "add") send(["voices", "phrases", "add"], t);
+        else send(["voices", "lines", "add"], { voice: bv, level: a.slice(1), text: t });   // lvoice lfamily lglobal
+      }
+      return;
+    }
+    if (b.dataset.go) {
+      if (b.dataset.openout) { outOpen = true; barOpen = false; if (stack[stack.length - 1] === b.dataset.go) { render(); return; } }
+      stack.push(b.dataset.go); render(); toTop(); return;
+    }
+    if (b.dataset.path) {
+      var path = JSON.parse(b.dataset.path);
+      if (path[0] === "mouth" && path[1] === "output") { outOpen = false; barOpen = false; }   // picking one folds it again
+      if (path[0] === "ears" && path[1] === "input") inOpen = false;
+      if (path[0] === "tool") { inOpen = false; outOpen = false; otherOpen[JSON.stringify(path)] = false; }
+      send(path, JSON.parse(b.dataset.value));
+    }
+  });
+  if (!window.webxdc) return;
+  window.webxdc.setUpdateListener(function (u) {
+    var p = u && u.payload; if (!p) return;
+    if (p.kind === "state" && p.app === "notify") {
+      S = { global: p.global || {}, ears: p.ears || {}, mouth: p.mouth || {}, devices: p.devices || {},
+            tools: p.tools || {}, said: p.said || null, host: p.host || "", hears: p.hears || {} };
+      at = p.at; pending = 0;
+      if (savingAct) {   // the Mac has answered the save: tick it for 2.5 s
+        savedAct = savingAct; savingAct = ""; savedUntil = Date.now() + 2500;
+        setTimeout(render, 2600);
+      }
+    } else if (p.kind === "set" && S && Array.isArray(p.path) && p.path[0] === "tool") {
+      var tt = (S.tools || {})[p.path[1]];
+      if (tt && tt.value && p.path.length > 2) put(tt.value, p.path.slice(2), p.value);
+    } else if (p.kind === "set" && S && Array.isArray(p.path) && p.path[0] !== "voices" &&
+               !(p.path[0] === "mouth" && (p.path[1] === "heart" || p.path[1] === "test"))) {
+      put(S, p.path, p.value);   // voices.*, mouth.heart and mouth.test are actions: the Mac's reply shows them
+    }
+    if (swOpen !== null && S && isHidden(swOpen) !== swHid) swOpen = null;   // Hide landed: close the row
+    if (u.serial === u.max_serial) render();
+  }, 0);
+})();
+</script>
+</body>
+</html>

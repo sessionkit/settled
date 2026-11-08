@@ -1,0 +1,6 @@
+# The private chat follower and its test stay out of the sdist, even
+# when a stale settled.egg-info/SOURCES.txt from an older build still names them.
+# The follower is in private/, outside every package.
+prune private
+exclude tests/test_follower.py
+exclude tests/test_host_literal.py

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The desk, run from a checkout on its own env. A TEMPLATE: `make agent` fills its
+     slots (HOME, VENV, CHECKOUT, PORT, SETTINGS_ROOT, each from the Makefile),
+     writes the result to ~/Library/LaunchAgents/, then launchctl bootout +
+     bootstrap gui/$(id -u). Its python is the env `make venv` builds from
+     requirements.txt, at a fixed path no worktree cleanup can take.
+     The label is the one `settled install` writes, so the two ways to run the
+     desk are one job, never two desks on one port.
+     Install: make venv && make agent
+     Check:   make status
+     Remove:  launchctl bootout gui/$(id -u)/dev.sessionkit.settled.desk -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.sessionkit.settled.desk</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>@VENV@/bin/python</string>
+    <string>-m</string>
+    <string>settled.web</string>
+    <string>@PORT@</string>
+  </array>
+  <key>WorkingDirectory</key><string>@CHECKOUT@</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>@HOME@</string>
+    <key>PATH</key><string>@HOME@/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SETTINGS_ROOT</key><string>@SETTINGS_ROOT@</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>@HOME@/.sessionkit/settled/log/web.log</string>
+  <key>StandardErrorPath</key><string>@HOME@/.sessionkit/settled/log/web.log</string>
+</dict>
+</plist>

@@ -1,0 +1,6 @@
+#!/bin/sh
+# The test suite's tmux. `make test` and tests/conftest.py put this
+# directory first on PATH, so a test that reaches for tmux lands here and
+# fails, loudly, instead of touching a live tmux server.
+echo "settings tests: STUB tmux called (tmux $*): the suite must never touch tmux" >&2
+exit 97

@@ -1,0 +1,7 @@
+# What settings needs at RUNTIME, beyond python3 >= 3.11 (stdlib tomllib):
+# deploy has one list. `make venv`
+# installs it into the checkout's own env, the one the launch agent runs.
+# requirements-test.txt carries every line here too (tests/test_guards.py proves it).
+cryptography   # webauth.py: passkey verification (web.py imports it)
+websockets     # web.py: the page's socket
+tomlkit        # schemas.py: the TOML write path; without it a TOML write refuses, naming it

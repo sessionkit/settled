@@ -1,0 +1,82 @@
+/* desk.css — the one sheet settled owns.
+   Tokens first, then the seven classes: row toggle chooser status cap foot bar.
+   Nothing here restyles 0.3.3: these are today's values, named once.
+   Talk keeps a copy of the token NAMES until it lives behind the front door. */
+
+:root {
+  --bg: #f2f2f7;  --card: #ffffff;  --fg: #1c1c1e;  --muted: #8e8e93;
+  --line: #e5e5ea; --knob: #ffffff; --off: #e9e9eb; --on: #34c759;
+  --tint: #007aff; --me: #007aff;   --them: #e9e9eb; --themfg: #1c1c1e;
+  --glass: rgba(242,242,247,.8);
+  --danger: #ff3b30; --warn: #ffcc00; --heart: #ff2d55;   /* the former literals */
+  --track: rgba(118,118,128,.12); --thumb: #ffffff;   /* the rooms' switch (segmented control) */
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;  --card: #1c1c1e;  --fg: #f2f2f7;  --muted: #8e8e93;
+    --line: #38383a; --knob: #ffffff; --off: #39393d; --on: #30d158;
+    --tint: #0a84ff; --me: #0a84ff;   --them: #26252a; --themfg: #f2f2f7;
+    --glass: rgba(0,0,0,.72);
+    --danger: #ff453a; --warn: #ffd60a; --heart: #ff375f;
+    --track: rgba(118,118,128,.24); --thumb: #636366;
+  }
+}
+
+* { box-sizing: border-box }
+html, body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.38 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif }
+
+/* row: one setting, one line. Title left; a help line under it. */
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-top: 1px solid var(--line); font-size: 15px; background: var(--card) }
+.row:first-child { border-top: 0 }
+.row .t { flex: 1; line-height: 1.25 }
+.row .t small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px }
+.row.big { padding: 14px } .row.big .t { font-size: 17px; font-weight: 600 }
+.card { background: var(--card); border-radius: 12px; overflow: hidden }
+
+/* toggle: a boolean. The switch is the only control. */
+.row.toggle .sw { width: 44px; height: 26px; border-radius: 13px; background: var(--off);
+  position: relative; flex: none; transition: background .15s }
+.row.toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px;
+  height: 22px; border-radius: 50%; background: var(--knob); transition: left .15s }
+.row.toggle .sw.on { background: var(--on) } .row.toggle .sw.on::after { left: 20px }
+
+/* chooser: an enum or a live control. Current value, then a chevron; a tick when chosen. */
+.row.chooser .v { color: var(--muted); font-size: 14px }
+.row.chooser .chev { color: var(--muted) }
+.row.chooser .tick { color: var(--tint); font-weight: 700 }
+
+/* status: a read-only live value. Label left, state right, a dot when live. */
+.row.status .v { color: var(--fg); font-size: 14px; display: flex; align-items: center; gap: 6px }
+.row.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--on) }
+.row.status .dot.off { background: var(--muted) }
+
+/* cap: a section's name. One object in the schema. */
+.cap { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+  margin: 14px 4px 6px }
+
+/* foot: a description, or a link to the plain document. */
+.foot { font-size: 13px; color: var(--muted); margin: 8px 4px }
+.foot a { color: var(--tint); text-decoration: none }
+
+/* cta: the one thing the page asks, once (e.g. "Turn the ears on"). */
+.cta { display: block; width: 100%; margin: 10px 0 0; padding: 11px; border: 0; border-radius: 12px;
+  background: var(--tint); color: #fff; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer }
+.foot.doc { text-align: center; font-size: 13.5px }
+
+/* bar: the page's strip. Top (the ear) or bottom (the mouth): one class, two positions. */
+.bar { display: flex; align-items: center; gap: 10px; padding: 11px 16px; font-size: 14px;
+  background: var(--glass); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px) }
+.bar:empty { display: none }   /* an empty bar draws nothing */
+.bar.top { position: sticky; top: 0; border-bottom: 1px solid var(--line) }
+.bar.bottom { position: sticky; bottom: 0; border-top: 1px solid var(--line) }
+.bar .state { flex: 1; line-height: 1.25 } .bar .state b { font-weight: 600 }
+.bar .state span { display: block; color: var(--muted); font-size: 12.5px }
+.bar > button { border: 0; border-radius: 14px; padding: 6px 12px; background: var(--card);
+  color: var(--fg); font: inherit; font-size: 13px }
+/* the ear: a recording light is the colour people already know */
+.bar.ear .dot { width: 10px; height: 10px; border-radius: 50%; flex: none;
+  background: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent) }
+.bar.ear.off .dot { background: var(--off); box-shadow: none }

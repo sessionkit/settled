@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ears.schema.json",
+  "title": "Ears",
+  "description": "Settings of the ears (the room's ear and every call's ear), host layer: ~/.sessionkit/voice/settings/ears.json. The keeper reads it every loop; each capture follows final and partials live. Written by hand, by `ears services install`, or by the settings app. A settings screen can be drawn from this schema alone: titles label the controls, a boolean is a switch, an anyOf of titled consts is a picker.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "This schema's name, when the file names it.",
+      "type": "string"
+    },
+    "listen": {
+      "title": "Listening",
+      "description": "The room's ear on or off. Off stops the capture; nothing is heard until it is on again.",
+      "type": "boolean",
+      "default": true
+    },
+    "room_on_call": {
+      "title": "Room mic during a call",
+      "description": "Off (the default): while a call is live the room's ear stops, so the call is the only way in and nobody at the computer can talk to the agents. On: both are heard. A security matter.",
+      "type": "boolean",
+      "default": false
+    },
+    "input": {
+      "title": "Input",
+      "description": "'default' follows the Mac's default input; one input's exact name pins the ears to it.",
+      "type": "string",
+      "default": "default",
+      "examples": ["default", "MacBook Pro Microphone"],
+      "x-widget": "audio-input"
+    },
+    "final": {
+      "title": "Engine",
+      "description": "What both ears write the kept line (the turn) with, and the partials too unless partials says otherwise: an OpenAI-compatible /v1 URL and the model it should load. A change lands on the next chunk, in the room and on a call, with no restart. Called stt until 2030-06-09.",
+      "default": {"url": "http://127.0.0.1:8890/v1", "model": "mlx-community/parakeet-tdt-0.6b-v3"},
+      "anyOf": [
+        {
+          "title": "Parakeet (mlx-audio, :8890)",
+          "const": {"url": "http://127.0.0.1:8890/v1", "model": "mlx-community/parakeet-tdt-0.6b-v3"}
+        },
+        {
+          "title": "Apple (ears serve, :2023)",
+          "const": {"url": "http://127.0.0.1:2023/v1"}
+        },
+        {
+          "title": "Whisper large-v2 (whisper.cpp, :2022)",
+          "const": {"url": "http://127.0.0.1:2022/v1"}
+        },
+        {
+          "title": "Other",
+          "type": "object",
+          "properties": {
+            "url": {"title": "URL", "type": "string", "pattern": "^https?://"},
+            "model": {"title": "Model", "type": "string", "minLength": 1}
+          },
+          "required": ["url"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "partials": {
+      "title": "Partials",
+      "description": "What writes your words while you are still talking. final: the engine above, one chunk at a time (about 2 s). nemotron: Nemotron streaming inside the capture, each word as it settles (about 1.35 GB per capture). The kept line is the engine above's either way. Looked at as each turn opens, with no restart.",
+      "default": "final",
+      "anyOf": [
+        {"title": "Same engine, per chunk", "const": "final"},
+        {"title": "Nemotron streaming (settled words)", "const": "nemotron"}
+      ]
+    },
+    "stt_hint": {
+      "title": "Prime STT with seat names",
+      "description": "Off by default, pending a decision on near-word wakes. On: each turn's final re-decode carries a prompt naming the seats in the wake file (ears wake add) as a bare list, \"Ada, Bob.\", so whisper hears a seat's name, not a real word that sounds like it. Partials never carry it, and a transcript that is only the prompt's words is dropped as an echo. Only whisper uses it; Parakeet and Apple ignore it. $EARS_STT_HINT=0 or 1 wins over this. Looked at on every request, with no restart.",
+      "type": "boolean",
+      "default": false
+    },
+    "record": {
+      "title": "Keep audio",
+      "description": "Off (the default): the ears keep no audio on disk, only the text of what was heard. On: captured audio is kept, the missed-reply clip and each turn's audio, and every voice the mic hears is kept, guests and TV included. $EARS_RECORD (1/true/on or 0/false/off) wins over this, and a capture's --record or --no-record wins over both. A value that is not true or false keeps nothing. Followed live, with no restart. `ears recording on|off` writes it.",
+      "type": "boolean",
+      "default": false
+    },
+    "record_days": {
+      "title": "Keep audio for (days)",
+      "description": "How long kept audio stays before it is deleted, in whole days; 0 keeps it until you delete it. $EARS_RECORD_DAYS wins over this. A value that is not a whole number of 0 or more is ignored, and the default is used.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 7
+    },
+    "record_notice": {
+      "title": "Call recording notice in the chat",
+      "description": "On (the default): a call states its recording status as one short line in its chat. $EARS_RECORD_NOTICE wins over this. A value that is not true or false counts as on. Read by the call bot; the ears only report it (ears recording status).",
+      "type": "boolean",
+      "default": true
+    },
+    "record_spoken_notice": {
+      "title": "Spoken notice on a recorded call",
+      "description": "On (the default): a call that is being recorded starts with a spoken notice that says so. Separate from the chat line above. $EARS_RECORD_SPOKEN_NOTICE wins over this. A value that is not true or false counts as on. Read by the call bot; the ears only report it (ears recording status).",
+      "type": "boolean",
+      "default": true
+    },
+    "heard_partials_only": {
+      "title": "Heard hook: partials only",
+      "description": "Off (the default): the heard hook (ears heard hook) shows each finished turn. On: it drops every finished turn and shows only the partial preview of a turn still being spoken, the shown events (wake word, barge-in, device change, call start and end) and other seats' said lines; it still moves past what it dropped. For seats that get each finished turn by mail (heard+room), so a turn is not shown twice. The hook's --partials-only or --no-partials-only wins over $EARS_HEARD_PARTIALS_ONLY, which wins over this. A value that is not true or false counts as off. Read on every hook run, with no restart.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "patternProperties": {
+    "^_": {"description": "A note for people (why a value is what it is, who set it); never read by the ears."}
+  },
+  "additionalProperties": false
+}

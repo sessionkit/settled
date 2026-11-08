@@ -1,0 +1,115 @@
+# desk.toml: the one settings file for a desk. It lives in desk's home folder (the one DESK_HOME
+# names, which also holds packs/ and spool/); copy this file there as desk.toml (git ignores it).
+# DESK_CONFIG can name another file instead, and wins over the home's desk.toml. desk refuses a key
+# it does not know. Values are "double-quoted", with no backslash or quote inside; lists are
+# ["a", "b"]. A `~` is not expanded in `packs`; a leading `~/` is in the four path keys that say so.
+#
+# Every key below follows one shape: what it does, which commands need it, its default, what wins
+# over it, and an example. A key is optional to parse; a command that needs one that is missing
+# stops and names this file and the key. desk has no names built in.
+
+# packs: the folder of kind packs, one subfolder per kind holding kind.json, card.html and
+# answer.json. examples/packs holds one neutral pack, poll, to copy from.
+# Needed by: render, focus, id, ingest, gallery, build-xdc, push and resend (a folder with no
+# loadable pack stops them, so an empty desk is never drawn or sent).
+# Default: `packs` under the home, when the key is absent. A relative path is under the home.
+# `~` is not expanded here, so write a home folder in full.
+# Wins over it: the DESK_PACKS environment variable.
+# Example: /Users/you/deskpacks
+packs = "/Users/you/deskpacks"
+
+# trusted_chats: the chat seats whose taps the desk believes. A tap from any other seat is not
+# acted on. An empty list counts as missing, and so does a blank entry.
+# Needed by: ingest.
+# Default: none: the command stops and names this key.
+# Wins over it: nothing.
+# Example: ["desk-chat"]
+trusted_chats = ["desk-chat"]
+
+# ask_senders: who may send asks. An ask (a card of any kind, addressed to a decider) is drawn only
+# when the local part of its From address is listed; other asks are logged on stderr and left off
+# the desk, and a tap answering one is held. Decisions, ticks and reports draw whoever wrote them.
+# `[]` is a choice: no ask is drawn at all.
+# Read by: render, focus, id and ingest. No command stops without it.
+# Default: absent means every sender draws, and each run warns on stderr.
+# Wins over it: nothing.
+# Example: ["agent"]
+ask_senders = ["agent"]
+
+# card_max_width: the widest the card column grows, as a width in pixels written "<n>px": a whole
+# number from 320 to 1600. A phone narrower than that stays fluid. Changing it changes the app, so
+# the next push rebuilds spool/desk.xdc and says a resend is due.
+# Needed by: gallery, build-xdc, push and resend. No command stops without it.
+# Default: "640px", when the key is absent.
+# Wins over it: nothing.
+# Example: "720px"
+card_max_width = "720px"
+
+# decider: the name of the person whose desk this is. It is written on each decision as
+# Atom-Authority, and only asks addressed to this name (or to no one) are shown.
+# Needed by: render, focus and ingest.
+# Default: none: the command stops and names this key.
+# Wins over it: the --decider flag (render and focus; ingest has no flag).
+# Example: "ana"
+decider = "ana"
+
+# state_box: the mail box whose state/in-flight atom heads the desk.
+# Needed by: render and focus.
+# Default: none: the command stops and names this key.
+# Wins over it: the --state-box flag.
+# Example: "ledger"
+state_box = "ledger"
+
+# reply_box: the mail box that decisions are sent to.
+# Needed by: ingest.
+# Default: none: the command stops and names this key.
+# Wins over it: nothing.
+# Example: "inbox"
+reply_box = "inbox"
+
+# fallback_area: the area that a card with no area pointer falls to.
+# Needed by: render and focus.
+# Default: none: the command stops and names this key.
+# Wins over it: nothing.
+# Example: "general-area"
+fallback_area = "general-area"
+
+# registry_cmd: the program that lists the areas as JSON. desk runs it as `<registry_cmd> --json`,
+# so give a path to one executable, not a command line. A leading `~/` becomes $HOME.
+# Needed by: render and focus, unless a registry file is given.
+# Default: none: the command stops and names this key.
+# Wins over it: the --registry FILE flag, which reads that JSON file instead and runs nothing.
+# Example: /usr/local/bin/registry-tool
+registry_cmd = "/usr/local/bin/registry-tool"
+
+# outbox: the chat daemon's outbox folder, where desk drops the .xdcupdate files that carry the
+# desk to the phone. A leading `~/` becomes $HOME.
+# Needed by: push, resend and focus.
+# Default: none: the command stops and names this key.
+# Wins over it: the --outbox flag.
+# Example: /Users/you/chat/outbox
+outbox = "/Users/you/chat/outbox"
+
+# chat_log: the chat daemon's log file, which resend reads to learn the message id of the app it
+# sent and to see the old app answer before it retires it. A leading `~/` becomes $HOME.
+# Needed by: resend (every form of it: a send, --adopt and --retire).
+# Default: none: the command stops and names this key.
+# Wins over it: the DESK_CHAT_LOG environment variable.
+# Example: /Users/you/chat/daemon.log
+chat_log = "/Users/you/chat/daemon.log"
+
+# send_cmd: the program that sends a chat message: a path to one executable, not a command line
+# (desk runs `<send_cmd> --channel ...` itself, so arguments here would become part of the path).
+# A leading `~/` becomes $HOME.
+# Needed by: resend, when it sends. `resend --adopt` and `resend --retire` send nothing and skip it.
+# Default: none: the command stops and names this key.
+# Wins over it: the DESK_SEND_CMD environment variable.
+# Example: /usr/local/bin/chat-send
+send_cmd = "/usr/local/bin/chat-send"
+
+# channel: the chat channel that resend sends the app to.
+# Needed by: resend, when it sends. `resend --adopt` and `resend --retire` skip it.
+# Default: none: the command stops and names this key.
+# Wins over it: the --channel flag, then the DESK_CHAT_CHANNEL environment variable.
+# Example: "desk"
+channel = "desk"

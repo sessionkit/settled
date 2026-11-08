@@ -1,0 +1,6 @@
+dist/
+__pycache__/
+*.egg-info/
+# setuptools writes build/ under the tree on `uv build` (the fresh-install gate runs it).
+# A comment must sit on its own line: after a pattern, git reads it as part of the pattern.
+build/

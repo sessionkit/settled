@@ -1,0 +1,44 @@
+[project]
+name = "settled"
+version = "0.1.0"
+description = "Settled: a secure, live, local web desk for any settings file a JSON Schema describes; Session Kit is its first user."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+dependencies = [
+    "websockets>=16,<18",   # web.py's socket; the kit venv carries 16, the settings venv 17
+    "cryptography>=42",     # webauth.py: passkeys
+    "tomlkit",              # schemas.py: TOML with comments kept
+]
+
+[project.optional-dependencies]
+# The kit's registry: where each tool's settings file and schema live
+# (sessiontools.settings: PACKAGES, package_dir, host_dir). Without it the
+# registry is SETTINGS_ROOT, the standalone input.
+kit = ["sessiontools>=0.3.3", "jsonschema>=4"]  # the kit's registry, and its validator for the kit's own schemas
+
+[project.scripts]
+settled = "settled.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]  # PEP 639: an SPDX `license` string and `license-files`
+build-backend = "setuptools.build_meta"
+
+# One package, no top-level modules: web, desk, schemas, webauth, sessions,
+# vm_check and paths are settled.web, settled.desk, ... so nothing in the kit's
+# shared venv collides with them (PyPI's web.py framework is a top-level `web`).
+# `settled.app` IS the repo's app/ directory, so `make build` (the .xdc) and the
+# wheel read one copy. The private chat
+# follower is private/apply.py, outside every package listed here, so no wheel
+# carries it, however it is built: `make wheel`, a direct `uv build --wheel`
+# or `pip install .`. MANIFEST.in keeps it out of the sdist, and
+# export-ignore out of the public tree (.gitattributes).
+[tool.setuptools]
+packages = ["settled", "settled.app"]
+
+[tool.setuptools.package-dir]
+"settled.app" = "app"
+
+[tool.setuptools.package-data]
+"settled.app" = ["*.html", "*.js", "*.css", "*.toml", "*.png"]

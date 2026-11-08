@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "A kit service file",
+  "description": "One file per service, written by its package's install under ~/.sessionkit/<package>/services/<name>.json, or <group>/<agent>.json for one per agent. `sessionkit service` reads it; the kit writes none.",
+  "type": "object",
+  "required": ["service", "name", "enabled", "install"],
+  "oneOf": [
+    {"required": ["label"], "not": {"required": ["run"]}},
+    {"required": ["run"], "not": {"required": ["label"]}}
+  ],
+  "properties": {
+    "service": {"type": "integer", "const": 1, "description": "The marker: this file is a service, and its schema version."},
+    "name": {"type": "string", "minLength": 1, "description": "The short name every verb takes: the label after dev.sessionkit.<package>."},
+    "label": {"type": "string", "pattern": "^dev\\.sessionkit\\.[a-z]+\\..+", "description": "The launchd label, under dev.sessionkit.<package>., where <package> is the folder the file sits in."},
+    "run": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "Instead of label: the command of a foreground service with no launchd job. Listed; the kit never starts it."},
+    "enabled": {"type": "boolean", "description": "The owner's word that this Mac should run it. Its install writes true, its uninstall false."},
+    "install": {"type": "string", "description": "The owner's command that installs it."},
+    "description": {"type": "string"},
+    "kind": {"enum": ["daemon", "on-demand"], "default": "daemon", "description": "An on-demand job runs and exits, so no pid is its healthy idle."},
+    "port": {"type": "integer"},
+    "protocol": {"enum": ["tcp", "udp"], "default": "tcp"},
+    "bind": {"type": "string", "default": "127.0.0.1"},
+    "health": {"type": "object", "properties": {"http": {"type": "string"}}},
+    "hazard": {"type": "array", "items": {"enum": ["call"]}, "description": "call: a stop or restart can drop a live phone call, so it is refused during one unless --force."},
+    "agent": {"type": "string", "description": "The agent a per-agent service serves."},
+    "uninstall": {"type": "string", "description": "The owner's removal command."},
+    "logs": {"type": "array", "items": {"type": "string"}, "description": "Logs beyond the plist's StandardOutPath and StandardErrorPath."},
+    "order": {"type": "integer", "default": 50, "description": "Order inside a group restart, lower first."},
+    "note": {"type": "string", "description": "One line the owner wants shown."}
+  }
+}

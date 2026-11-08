@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "desk.schema.json",
+  "title": "Desk",
+  "description": "Settings of Desk, the decider's card desk: desk.toml in desk's home folder, read by desk on every redraw. Written from desk's own desk.toml.example (git blob c5fc68e), which documents every key desk accepts; desk refuses a key it does not know, so this schema does too. Every key is optional to parse; a command that needs a missing one stops and names it. Values are double-quoted strings with no backslash or quote inside, or lists of them. Installed beside the file as .desk.schema.json; that install is a live act and waits for a go.",
+  "type": "object",
+  "properties": {
+    "packs": {
+      "title": "Packs",
+      "description": "The folder of kind packs, one subfolder per kind holding kind.json, card.html and answer.json. A relative path is under desk's home; `~` is not expanded here, so write a home folder in full. Default: packs under the home. DESK_PACKS wins over it.",
+      "x-hint": "The folder of kind packs. A change needs a new app sent to chat 12.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["/Users/you/deskpacks"]
+    },
+    "trusted_chats": {
+      "title": "Trusted chats",
+      "description": "The chat seats whose taps the desk believes; a tap from any other seat is not acted on. An empty list counts as missing, and a blank entry is refused. Needed by ingest.",
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$"},
+      "examples": [["desk-chat"]]
+    },
+    "ask_senders": {
+      "title": "Ask senders",
+      "description": "Who may send asks: an ask is drawn only when the local part of its From address is listed. [] is a choice: no ask is drawn at all. Absent: every sender draws, and each run warns.",
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$"},
+      "examples": [["agent"]]
+    },
+    "card_max_width": {
+      "title": "Card width",
+      "description": "The widest the card column grows, written \"<n>px\", n a whole number from 320 to 1600. A phone narrower than that stays fluid. Default: \"640px\". Changing it changes the app: the next push rebuilds spool/desk.xdc and says a resend is due.",
+      "x-hint": "320px to 1600px. A change needs a new app sent to chat 12.",
+      "type": "string",
+      "pattern": "^(32[0-9]|3[3-9][0-9]|[4-9][0-9]{2}|1[0-5][0-9]{2}|1600)px$",
+      "default": "640px",
+      "examples": ["720px"]
+    },
+    "decider": {
+      "title": "Decider",
+      "description": "The name of the person whose desk this is: written on each decision as Atom-Authority, and only asks addressed to this name (or to no one) are shown. The --decider flag wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["ana"]
+    },
+    "state_box": {
+      "title": "State box",
+      "description": "The mail box whose state/in-flight atom heads the desk. The --state-box flag wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["ledger"]
+    },
+    "reply_box": {
+      "title": "Reply box",
+      "description": "The mail box that decisions are sent to. Needed by ingest.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["inbox"]
+    },
+    "fallback_area": {
+      "title": "Fallback area",
+      "description": "The area that a card with no area pointer falls to. Needed by render and focus.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["general-area"]
+    },
+    "registry_cmd": {
+      "title": "Registry command",
+      "description": "The program that lists the areas as JSON; desk runs it as `<registry_cmd> --json`, so a path to one executable, not a command line. A leading ~/ becomes $HOME. The --registry FILE flag wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["/usr/local/bin/registry-tool"]
+    },
+    "outbox": {
+      "title": "Outbox",
+      "description": "The chat daemon's outbox folder, where desk drops the .xdcupdate files that carry the desk to the phone. A leading ~/ becomes $HOME. The --outbox flag wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["/Users/you/chat/outbox"]
+    },
+    "chat_log": {
+      "title": "Chat log",
+      "description": "The chat daemon's log file, which resend reads to learn the message id of the app it sent. A leading ~/ becomes $HOME. DESK_CHAT_LOG wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["/Users/you/chat/daemon.log"]
+    },
+    "send_cmd": {
+      "title": "Send command",
+      "description": "The program that sends a chat message: a path to one executable, not a command line. A leading ~/ becomes $HOME. DESK_SEND_CMD wins over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["/usr/local/bin/chat-send"]
+    },
+    "channel": {
+      "title": "Channel",
+      "description": "The chat channel that resend sends the app to. The --channel flag, then DESK_CHAT_CHANNEL, win over it.",
+      "type": "string",
+      "pattern": "^[^\"\\\\]*[^\"\\\\\\s][^\"\\\\]*$",
+      "examples": ["desk"]
+    }
+  },
+  "additionalProperties": false
+}

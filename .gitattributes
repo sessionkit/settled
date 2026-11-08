@@ -1,0 +1,15 @@
+# The public tree is `git archive` of a ref with these honoured.
+# The private chat follower and its test stay in the repo but out of the export.
+# The follower lives in private/, which is no package in pyproject, so no wheel
+# can carry it however it is built; MANIFEST.in keeps it out of the sdist.
+# Both lines: `private` drops the directory from git archive (else an empty
+# `private/` entry is left), and `private/**` marks each file inside, since an
+# attributes pattern on a directory does not reach its files (gitattributes(5)).
+private export-ignore
+private/** export-ignore
+tests/test_follower.py export-ignore
+# openspec/ is the private design record: out of the export, kept in the repo
+# (as sessionmail does with its own). Both lines, for the reason given above.
+openspec export-ignore
+openspec/** export-ignore
+tests/test_host_literal.py export-ignore
